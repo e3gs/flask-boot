@@ -1,0 +1,11 @@
+Flask
+Flask-Cache
+Flask-Principal
+Flask-Login
+Flask-WTF
+Flask-Mail
+Flask-Script
+Flask-Babel
+Flask-Uploads
+pymongo
+blinker
