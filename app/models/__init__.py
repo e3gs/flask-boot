@@ -9,3 +9,4 @@
     :date: 16/6/11
 """
 from user import User
+from blog import Post, Tag

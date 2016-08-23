@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block main %}
+    <div id="main">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 col-md-offset-3">
+                    <div class="card">
+                        <h2>{{ _('Login') }}</h2>
+                        <hr>
+                        <form class="form-horizontal" action="/login" method="post">
+                            {{ form.csrf_token }}
+                            {{ form.next_url }}
+                            <div class="form-group {{ 'has-error' if form.email.errors }}">
+                                <label class="col-sm-3 control-label">{{ _('Email') }}</label>
+                                <div class="col-sm-8">
+                                    {{ form.email(class='form-control') }}
+                                    {% if form.email.errors %}
+                                        <p class="help-block">{{ form.email.errors[0] }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="form-group {{ 'has-error' if form.password.errors }}">
+                                <label class="col-sm-3 control-label">{{ _('Password') }}</label>
+                                <div class="col-sm-8">
+                                    {{ form.password(class='form-control') }}
+                                    {% if form.password.errors %}
+                                        <p class="help-block">{{ form.password.errors[0] }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="col-sm-offset-3 col-sm-10">
+                                    <div class="checkbox">
+                                        <label>
+                                            {{ form.remember(checked='checked') }} {{ _('Remember me') }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group mb-0">
+                                <div class="col-sm-offset-3 col-sm-8">
+                                    <button type="submit" class="btn btn-ada-dark">{{ _('Login') }}</button>
+                                    <p class="help-block"><a href="javascript:coming();">{{ _('Forget password?') }}</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <p class="text-center">
+                        {{ _('Don\'t have an account yet? %(signup)s now.', signup=('<a href="%s">Signup</a>' % url_for('public.signup'))|safe) }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script %}
+    <script type="text/javascript">
+        {% if error %}showError({{ error|tojson }});{% endif %}
+    </script>
+{% endblock %}

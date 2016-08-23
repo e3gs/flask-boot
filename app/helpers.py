@@ -23,7 +23,7 @@ def timesince(dt, default=None):
     if default is None:
         default = gettext("just now")
 
-    now = datetime.utcnow()
+    now = datetime.now()
     diff = now - dt
 
     years = diff.days / 365
@@ -49,3 +49,8 @@ def timesince(dt, default=None):
             return gettext("%(period)s ago", period=trans)
 
     return default
+def date(dt):
+    """
+    在页面上显示日期
+    """
+    return dt.strftime('%Y/%m/%d')

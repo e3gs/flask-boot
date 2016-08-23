@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block title %}403{% endblock %}
+
+{% block style %}
+    <style>
+        #footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+{% endblock %}
+
+{% block main %}
+    <div id="main">
+        <div class="container">
+            <div class="page-error">
+                <h1>403</h1>
+                <h2>That's an error!</h2>
+                <p>Sorry, Not allowed or forbidden!</p>
+                <a class="btn btn-ada-dark" href="/">Back to Home</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

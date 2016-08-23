@@ -9,12 +9,14 @@
     :date: 16/5/17
 """
 
+import bson
+from flask import abort
 from werkzeug.routing import BaseConverter
 
 
 class ListConverter(BaseConverter):
     """
-    自定义URL转换器, 允许传入列表
+    自定义URL转换器, 允许传入列表.
 
     /price/US+CN
     ->
@@ -34,3 +36,21 @@ class ListConverter(BaseConverter):
         """
         return '+'.join(BaseConverter.to_url(value)
                         for value in values)
+
+
+class BSONObjectIdConverter(BaseConverter):
+    """
+    A simple converter for the RESTfull URL routing system of Flask.
+    It checks the validate of the id and converts it into a :class:`bson.objectid.ObjectId` object.
+
+    @app.route('/<ObjectId:id>')
+    """
+
+    def to_python(self, value):
+        try:
+            return bson.ObjectId(value)
+        except bson.errors.InvalidId:
+            abort(400)
+
+    def to_url(self, value):
+        return str(value)

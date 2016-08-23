@@ -9,6 +9,8 @@
     :date: 16/5/25
 """
 
+import json
+import re
 from collections import MutableSequence, MutableMapping
 from copy import deepcopy
 from datetime import datetime
@@ -43,6 +45,9 @@ class SchemaOperator(object):
         for operand in self.operands:
             yield operand
 
+    def __len__(self):
+        return len(self.operands)
+
     def __eq__(self, other):
         return type(self) == type(other) and self.operands == other.operands
 
@@ -71,20 +76,23 @@ class IN(SchemaOperator):
 # Constants
 #
 
-# Field which does not need to be declared into the structure
-STRUCTURE_KEYWORDS = ['_id', '_ns', '_revision', '_version']
+# 日期格式
+DATETIME_FORMATS = ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
 
 # 字段允许使用的类型
+# https://api.mongodb.com/python/current/api/bson/son.html
 AUTHORIZED_TYPES = [
     bool,
     int,
     long,
     float,
     unicode,
-    str,
+    # http://api.mongodb.com/python/current/tutorial.html#a-note-on-unicode-strings
+    # 使用pymongo读取str后会被转化为unicode, 导致直接保存数据对象时无法通过类型验证, 因此不支持str
+    # str
     datetime,
     ObjectId,
-    Binary
+    Binary  # TODO: Support encoding & decoding
 ]
 
 
@@ -96,20 +104,6 @@ class MongoSupportError(Exception):
     pass
 
 
-class DataError(MongoSupportError):
-    """
-    数据内容与数据定义不符.
-    """
-    pass
-
-
-class ValidationError(MongoSupportError):
-    """
-    数据内容无法通过校验器的验证.
-    """
-    pass
-
-
 class StructureError(MongoSupportError):
     """
     数据模型的定义上的错误.
@@ -117,16 +111,16 @@ class StructureError(MongoSupportError):
     pass
 
 
-class ConnectionError(MongoSupportError):
+class DataError(MongoSupportError):
     """
-    数据库连接错误.
+    数据内容与数据定义不符.
     """
     pass
 
 
-class OperationError(MongoSupportError):
+class ConnectionError(MongoSupportError):
     """
-    操作错误.
+    数据库连接错误.
     """
     pass
 
@@ -145,99 +139,95 @@ class ModelMetaclass(type):
             return type.__new__(mcs, name, bases, attrs)
 
         # 保护字段, 使用dot notation的方式访问数据的时候, 跳过这些保护字段
-        attrs['_protected_field_names'] = {'_protected_field_names', '_valid_paths'}
+        attrs['_protected_field_names'] = {'_protected_field_names', '_valid_paths', 'validation_errors'}
         # 父类及其父类的所有类属性
         for mro in bases[0].__mro__:
-            attrs['_protected_field_names'] = attrs['_protected_field_names'].union(list(mro.__dict__))
+            attrs['_protected_field_names'] = attrs['_protected_field_names'].union(set(mro.__dict__))
         attrs['_protected_field_names'] = list(attrs['_protected_field_names'])
-
-        # 验证数据结构
-        mcs._validate_structure(attrs['structure'], name)
 
         # 添加保留字段
         if '_id' not in attrs['structure']:
             attrs['structure']['_id'] = ObjectId
 
-        # 对于包含嵌套的数据结构, 如果要给内部的元素定义必填/验证器/默认值/索引等, 需要使用dot notation的方式来访问指定位置的元素
-        attrs['_valid_paths'] = {k[0]: k[1] for k in mcs._walk_structure(attrs['structure'])}
+        # 验证数据结构
+        attrs['_valid_paths'] = {}
+        mcs._validate_structure(name, attrs)
+        attrs['_valid_paths'] = {k.replace(name + '.', ''): v for k, v in attrs['_valid_paths'].iteritems() if
+                                 not k == name}
 
         '''
         print "Init model class %s with valid paths {" % name
-        for k, v in attrs['_valid_paths'].iteritems():
+        for k, v in sorted(attrs['_valid_paths'].iteritems()):
             print "    '%s': %s" % (k, v)
+        print "} and protected field names {"
+        for v in sorted(attrs['_protected_field_names']):
+            print "    '%s'" % v
         print "}"
         '''
 
         # 验证其他描述符, 如必填/验证器/默认值/索引等
-        mcs._validate_descriptors(attrs)
+        mcs._validate_descriptors(name, attrs)
 
         return type.__new__(mcs, name, bases, attrs)
 
     @classmethod
-    def _validate_structure(mcs, struct, name):
+    def _validate_structure(mcs, name, attrs):
         """
         验证数据结构的合法性.
         """
+        struct = attrs['structure']
+        protected = attrs['_protected_field_names']
 
         def __validate_structure(_struct, _name):
             # type
             if type(_struct) is type:
+                attrs['_valid_paths'][_name] = _struct
                 if _struct not in AUTHORIZED_TYPES:
-                    if _struct not in AUTHORIZED_TYPES:
-                        raise StructureError("%s: %s is not an authorized type" % (_name, _struct))
+                    raise StructureError("%s: %s is not an authorized type" % (_name, _struct))
             # {}
             elif isinstance(_struct, dict):
+                attrs['_valid_paths'][_name] = {}
                 if not len(_struct):
                     raise StructureError(
                         "%s: %s can not be a empty dict" % (_name, _struct))
-
                 for key in _struct:
                     # Check key type
                     if isinstance(key, str):
-                        if "." in key:
-                            raise StructureError("%s: %s must not contain '.'" % (_name, key))
-                        if key.startswith('$'):
-                            raise StructureError("%s: %s must not start with '$'" % (_name, key))
+                        if not re.match('^[a-zA-Z0-9_]+$', key):
+                            raise StructureError("%s: %s can only contain letters, numbers or _" % (_name, key))
                         if key[0].isdigit():
                             raise StructureError("%s: %s must not start with digit" % (_name, key))
+                        if attrs.get('use_dot_notation', True) and key in protected:
+                            raise StructureError(
+                                "%s: %s is a protected field name, please set use_dot_notation = False if you insist "
+                                "to use this field name; protected fields are %s." % (_name, key, sorted(protected)))
                     else:
                         raise StructureError("%s: %s must be a str" % (_name, key))
 
-                    if isinstance(_struct[key], dict):
-                        __validate_structure(_struct[key], "%s.%s" % (_name, key))
-                    elif isinstance(_struct[key], (list, tuple)):
-                        __validate_structure(_struct[key], "%s.%s" % (_name, key))
-                    elif isinstance(_struct[key], SchemaOperator):
-                        __validate_structure(_struct[key], "%s.%s" % (_name, key))
-                    elif _struct[key] not in AUTHORIZED_TYPES:
-                        raise StructureError(
-                            "%s: %s should be an authorized type but %s" % (_name, key, _struct[key]))
+                    __validate_structure(_struct[key], "%s.%s" % (_name, key))
             # []
             elif isinstance(_struct, list):
+                attrs['_valid_paths'][_name] = []
                 if not len(_struct):
                     raise StructureError(
                         "%s: %s can not be a empty list" % (_name, _struct))
                 if len(_struct) > 1:
                     raise StructureError(
                         "%s: %s must not have more then one type" % (_name, _struct))
-                for item in _struct:
-                    __validate_structure(item, _name)
-            # ()
-            elif isinstance(_struct, tuple):
-                if not len(_struct):
-                    raise StructureError(
-                        "%s: %s can not be a empty tuple" % (_name, _struct))
-                for item in _struct:
-                    if isinstance(item, dict) or isinstance(item, list) or isinstance(item, tuple):
-                        raise StructureError(
-                            "%s: %s can not contains complex structure dict/list/tuple" % (_name, _struct))
-                    __validate_structure(item, _name)
+                __validate_structure(_struct[0], "%s.$" % _name)
             # IN
             elif isinstance(_struct, SchemaOperator):
+                types = set()
                 for operand in _struct:
+                    types.add(type(operand))
                     if type(operand) not in AUTHORIZED_TYPES:
                         raise StructureError("%s: %s in %s is not an authorized type (%s found)" % (
                             _name, operand, _struct, type(operand).__name__))
+                if len(_struct) == 0:
+                    raise StructureError("%s: %s can not be empty" % (_name, _struct))
+                if len(types) > 1:
+                    raise StructureError("%s: %s can not have more than one type" % (_name, _struct))
+                attrs['_valid_paths'][_name] = list(types)[0]
             else:
                 raise StructureError(
                     "%s: %s is not a supported thing" % (_name, _struct))
@@ -249,33 +239,6 @@ class ModelMetaclass(type):
         __validate_structure(struct, name)
 
     @classmethod
-    def _walk_structure(mcs, struct):
-        """
-        遍历数据结构获取合法的访问路径.
-        不考虑列表下标, 只考虑数据结构的嵌套关系.
-        """
-        for key, value in struct.iteritems():
-            # {}
-            if isinstance(value, dict):
-                yield key, {}
-
-                for child_key, t in mcs._walk_structure(value):
-                    yield '%s.%s' % (key, child_key), t
-            # []
-            elif isinstance(value, list):
-                yield key, []
-
-                if isinstance(value[0], dict):
-                    for child_key, t in mcs._walk_structure(value[0]):
-                        yield '%s.%s' % (key, child_key), t
-            # ()
-            elif isinstance(value, tuple):
-                yield key, ()
-            # type
-            else:
-                yield key, value
-
-    @classmethod
     def _is_nested_structure_in_list(mcs, valid_paths, path):
         """
         判断指定的访问路径是否是一个列表内部的嵌套结构.
@@ -283,16 +246,12 @@ class ModelMetaclass(type):
         tokens = path.split('.')
         if len(tokens) > 1:
             del tokens[-1]
-            path = ""
-            for t in tokens:
-                path = ("%s.%s" % (path, t)).strip('.')
-                t = valid_paths[path]
-                if isinstance(t, list):
-                    return True
+            if '$' in tokens:
+                return True
         return False
 
     @classmethod
-    def _validate_descriptors(mcs, attrs):
+    def _validate_descriptors(mcs, name, attrs):
         """
         验证相关设置, 如必填/验证器/默认值/索引等.
         """
@@ -300,62 +259,66 @@ class ModelMetaclass(type):
 
         for dv in attrs.get('default_values', {}):
             if dv not in valid_paths:
-                raise StructureError("Error in default_values: can't find %s in structure" % dv)
+                raise StructureError("%s: Error in default_values: can't find %s in structure" % (name, dv))
             if mcs._is_nested_structure_in_list(valid_paths, dv):
                 raise StructureError(
-                    "Error in default_values: can't set default values to %s which is a nested structure in list" % dv)
+                    "%s: Error in default_values: can't set default values to %s which is a nested structure in list" %
+                    (name, dv))
 
         for rf in attrs.get('required_fields', []):
             if rf not in valid_paths:
-                raise StructureError("Error in required_fields: can't find %s in structure" % rf)
+                raise StructureError("%s: Error in required_fields: can't find %s in structure" % (name, rf))
             if mcs._is_nested_structure_in_list(valid_paths, rf):
                 raise StructureError(
-                    "Error in required_fields: can't set required fields to %s which is a nested structure in list" %
-                    rf)
+                    "%s: Error in required_fields: can't set required fields to %s which is a nested structure in list"
+                    % (name, rf))
 
         for v in attrs.get('validators', {}):
             if v not in valid_paths:
-                raise StructureError("Error in validators: can't find %s in structure" % v)
+                raise StructureError("%s: Error in validators: can't find %s in structure" % (name, v))
             if mcs._is_nested_structure_in_list(valid_paths, v):
                 raise StructureError(
-                    "Error in validators: can't set validators to %s which is a nested structure in list" % v)
+                    "%s: Error in validators: can't set validators to %s which is a nested structure in list" %
+                    (name, v))
 
         # required_fields
         if attrs.get('required_fields'):
             if len(attrs['required_fields']) != len(set(attrs['required_fields'])):
-                raise StructureError("duplicate required_fields : %s" % attrs['required_fields'])
+                raise StructureError("%s: duplicate required_fields : %s" % (name, attrs['required_fields']))
 
         # indexes
         if attrs.get('indexes'):
             for index in attrs['indexes']:
                 if index.get('check', True):
                     if 'fields' not in index:
-                        raise StructureError("'fields' key must be specify in indexes")
+                        raise StructureError("%s: 'fields' key must be specify in indexes" % name)
                     for key, value in index.iteritems():
                         if key == "fields":
-                            if isinstance(value, str):
-                                if value not in valid_paths and value not in STRUCTURE_KEYWORDS:
-                                    raise StructureError("Error in indexes: can't find %s in structure" % value)
+                            if isinstance(value, basestring):
+                                if value not in valid_paths:
+                                    raise StructureError(
+                                        "%s: Error in indexes: can't find %s in structure" % (name, value))
                             elif isinstance(value, list):
                                 for val in value:
                                     if isinstance(val, tuple):
                                         field, direction = val
-                                        if field not in valid_paths and field not in STRUCTURE_KEYWORDS:
+                                        if field not in valid_paths:
                                             raise StructureError(
-                                                "Error in indexes: can't find %s in structure" % field)
-                                        if direction not in [pymongo.DESCENDING, pymongo.ASCENDING, pymongo.OFF,
-                                                             pymongo.ALL, pymongo.GEO2D, pymongo.GEOHAYSTACK,
+                                                "%s: Error in indexes: can't find %s in structure" % (name, field))
+                                        if direction not in [pymongo.DESCENDING, pymongo.ASCENDING, pymongo.HASHED,
+                                                             pymongo.GEO2D, pymongo.GEOHAYSTACK,
                                                              pymongo.GEOSPHERE, pymongo.TEXT]:
                                             raise StructureError(
-                                                "index direction must be INDEX_DESCENDING, INDEX_ASCENDING, INDEX_OFF, "
-                                                "INDEX_ALL, INDEX_GEO2D, INDEX_GEOHAYSTACK, or INDEX_GEOSPHERE."
-                                                " Got %s" % direction)  # Omit text because it's still beta
+                                                "%s: index direction must be INDEX_DESCENDING, INDEX_ASCENDING, "
+                                                "INDEX_HASHED, INDEX_GEO2D, INDEX_GEOHAYSTACK, "
+                                                "INDEX_GEOSPHERE, INDEX_TEXT. Got %s" % (name, direction))
                                     else:
-                                        if val not in valid_paths and val not in STRUCTURE_KEYWORDS:
-                                            raise StructureError("Error in indexes: can't find %s in structure" % val)
+                                        if val not in valid_paths:
+                                            raise StructureError(
+                                                "%s: Error in indexes: can't find %s in structure" % (name, val))
                             else:
-                                raise StructureError("fields must be a string, a list of string or tuple "
-                                                     "(got %s instead)" % type(value))
+                                raise StructureError("%s: fields must be a string, a list of string or tuple "
+                                                     "(got %s instead)" % (name, type(value)))
                         elif key == "ttl":
                             assert isinstance(value, int)
 
@@ -366,7 +329,7 @@ class ModelMetaclass(type):
 
 class Model(dict):
     """
-    Model = Dict schema definition + Dict content validation + Crud for Mongodb collection
+    Model = Dict schema definition + Dict content validation + Crud for Mongodb collection.
     """
     # Dict schema definition
 
@@ -435,7 +398,7 @@ class Model(dict):
     # 当前正在访问的数据库别名, 如果为空, 相当于DEFAULT_CONNECTION_NAME
     db_alias = None
 
-    def __init__(self, doc=None):
+    def __init__(self, doc=None, set_default=True):
         """
         :param doc: a dict
         """
@@ -447,9 +410,9 @@ class Model(dict):
         if doc is not None:
             for k, v in doc.iteritems():
                 self[k] = v
-        else:
-            if self.default_values:
-                self._set_default_fields(self, self.structure)
+
+        if set_default and self.default_values:
+            self._set_default_values(self, self.structure)
 
     def __str__(self):
         """
@@ -478,7 +441,7 @@ class Model(dict):
 
     def _validate_doc(self, doc, struct, path=""):
         """
-        check if doc field types match the doc field structure
+        check if doc field types match the doc field structure.
         """
         if doc is None:
             return
@@ -497,11 +460,10 @@ class Model(dict):
 
             # For fields in doc but not in structure
             doc_struct_diff = list(set(doc).difference(set(struct)))
-            bad_fields = [d for d in doc_struct_diff if d not in STRUCTURE_KEYWORDS]
+            bad_fields = [d for d in doc_struct_diff]
             if bad_fields:
                 self._raise_exception(DataError, None,
                                       "unknown fields %s in %s" % (bad_fields, type(doc).__name__))
-
             for key in struct:
                 if key in doc:
                     self._validate_doc(doc[key], struct[key], ("%s.%s" % (path, key)).strip('.'))
@@ -512,16 +474,6 @@ class Model(dict):
                                       "%s must be an instance of list not %s" % (path, type(doc).__name__))
             for obj in doc:
                 self._validate_doc(obj, struct[0], path)
-        # ()
-        elif isinstance(struct, tuple):
-            if not isinstance(doc, list):
-                self._raise_exception(DataError, path,
-                                      "%s must be an instance of list not %s" % (path, type(doc).__name__))
-            if len(doc) != len(struct):
-                self._raise_exception(DataError, path, "%s must have %s items not %s" % (
-                    path, len(struct), len(doc)))
-            for i in range(len(struct)):
-                self._validate_doc(doc[i], struct[i], path)
         # IN
         elif isinstance(struct, SchemaOperator):
             if not struct.validate(doc):
@@ -535,7 +487,7 @@ class Model(dict):
 
     def _validate_required(self, doc):
         """
-        验证必填字段
+        验证必填字段.
         """
         for rf in self.required_fields:
             vals = self._get_values_by_path(doc, rf)
@@ -555,9 +507,9 @@ class Model(dict):
                     for validator in validators:
                         try:
                             if not validator(val):
-                                raise ValidationError("%s does not pass the validator " + validator.__name__)
+                                raise DataError("%s does not pass the validator " + validator.__name__)
                         except Exception, e:
-                            self._raise_exception(ValidationError, key, unicode(e) % key)
+                            self._raise_exception(DataError, key, unicode(e) % key)
 
     def _raise_exception(self, exception, field, message):
         """
@@ -591,14 +543,13 @@ class Model(dict):
 
         return vals
 
-    def _set_default_fields(self, doc, struct, path=""):
+    def _set_default_values(self, doc, struct, path=""):
         """
         设置字段的默认值.
         """
         for key in struct:
             new_path = ("%s.%s" % (path, key)).strip('.')
-            # print "setting default value for %s" % new_path
-
+            # print "setting default value for %s with type %s" % (new_path, struct[key])
             # type
             if type(struct[key]) is type:
                 if new_path in self.default_values and key not in doc:
@@ -606,7 +557,6 @@ class Model(dict):
                     if callable(new_value):
                         new_value = new_value()
                     doc[key] = new_value
-
             # {}
             if isinstance(struct[key], dict):
                 # 设置整个字典字段的默认值
@@ -621,8 +571,7 @@ class Model(dict):
                 if [i for i in self.default_values if i.startswith("%s." % new_path)]:
                     if key not in doc or doc[key] is None:
                         doc[key] = {}
-                    self._set_default_fields(doc[key], struct[key], new_path)
-
+                    self._set_default_values(doc[key], struct[key], new_path)
             # []
             if isinstance(struct[key], list):
                 # 设置整个列表字段的默认值
@@ -634,20 +583,22 @@ class Model(dict):
                     elif isinstance(new_value, list):
                         new_value = new_value[:]
                     doc[key] = new_value
+            # IN
+            if isinstance(struct[key], SchemaOperator):
+                if new_path in self.default_values and key not in doc:
+                    new_value = self.default_values[new_path]
+                    doc[key] = new_value
 
     def __setattr__(self, key, value):
         """
         Support dot notation.
-
-        注意:
-        由于在数据模型这个级别有可能定义一些额外的属性, 因此此处限定只有在structure中定义的字段才会当成数据的内容来处理,
-        如果写错了数据字段的名字, 会被当成一个实例的属性, 而不是数据的内容,
-        后续的数据结构的校验逻辑中, 由于没有数据, 也无法验证.
-
         """
         if self.use_dot_notation and key not in self._protected_field_names and key in self.structure:
-            # print "proxy setting attr %s with %s" % (key, value)
-            self[key] = value
+            # print "setting attr %s with %s" % (key, value)
+            if isinstance(value, (DotDictProxy, DotListProxy)):
+                self[key] = value._obj_
+            else:
+                self[key] = value
         else:
             dict.__setattr__(self, key, value)
 
@@ -658,8 +609,8 @@ class Model(dict):
         if self.use_dot_notation and key not in self._protected_field_names and key in self.structure:
             s = self.structure[key]
             found = self.get(key, None)
-            # print "getting attr %s with type %s = %s" % (key, type(s).__name__, found)
-            if not found:
+            # print "getting attr %s for structure %s with value %s" % (key, s, type(found))
+            if found is None:
                 if isinstance(s, dict):
                     found = {}
                 elif isinstance(s, list):
@@ -682,7 +633,7 @@ class Model(dict):
     def get_collection(cls, **kwargs):
         """
         Returns the collection for the document.
-        可以在此处为collection重置read_preference/write_concern等参数
+        可以在此处为collection重置read_preference/write_concern等参数.
         """
         if kwargs.get('refresh', False) or not hasattr(cls, 'collection') or cls.collection is None:
             db = get_db(cls.db_alias if cls.db_alias else DEFAULT_CONNECTION_NAME)
@@ -693,15 +644,36 @@ class Model(dict):
             collection_name = cls.__collection__
             cls.collection = db[collection_name].with_options(read_preference=read_preference,
                                                               write_concern=write_concern)
+            # 每次获取collection时尝试创建索引
+            # https://docs.mongodb.com/getting-started/python/indexes/
+            cls._create_indexes(cls.collection)
 
         return cls.collection
 
     @classmethod
-    def _create_indexes(cls):
+    def _create_indexes(cls, collection):
         """
-        暂不支持创建索引.
+        创建索引.
         """
-        pass
+        # print "Try to create index for %s" % cls.__name__
+        for index in deepcopy(cls.indexes):
+            unique = False
+            if 'unique' in index:
+                unique = index.pop('unique')
+
+            given_fields = index.pop("fields", list())
+            if isinstance(given_fields, tuple):
+                fields = [given_fields]
+            elif isinstance(given_fields, basestring):
+                fields = [(given_fields, pymongo.ASCENDING)]
+            else:
+                fields = []
+                for field in given_fields:
+                    if isinstance(field, basestring):
+                        field = (field, pymongo.ASCENDING)
+                    fields.append(field)
+            # print 'Creating index for {}'.format(str(given_fields))
+            collection.create_index(fields, unique=unique, **index)
 
     @classmethod
     def insert_one(cls, doc, *args, **kwargs):
@@ -733,7 +705,7 @@ class Model(dict):
     @classmethod
     def find(cls, *args, **kwargs):
         """
-        查找多个数据模型, 参数可以参考
+        查找多个数据记录, 参数可以参考:
         https://api.mongodb.com/python/current/api/pymongo/collection.html
         """
         collection = cls.get_collection(**kwargs)
@@ -804,14 +776,14 @@ class Model(dict):
     #
     #
 
-    def save(self, **kwargs):
+    def save(self, insert_with_id=False, **kwargs):
         if not self.validate():
-            raise OperationError(
+            raise DataError(
                 "It is an illegal %s object with errors, %s" % (self.__class__.__name__, self.validation_errors))
 
         collection = self.get_collection(**kwargs)
         _id = self.get('_id', None)
-        if not _id:
+        if insert_with_id or not _id:
             # InsertOneResult
             return collection.insert_one(self)
         else:
@@ -821,7 +793,7 @@ class Model(dict):
     def reload(self, **kwargs):
         existing = self.find_one({'_id': self['_id']}, **kwargs)
         if not existing:
-            raise OperationError("Can not load existing document by %s" % self['_id'])
+            raise DataError("Can not load existing document by %s" % self['_id'])
 
         self.clear()
         for k, v in existing.iteritems():
@@ -833,6 +805,87 @@ class Model(dict):
         collection = self.get_collection(**kwargs)
         # DeleteResult
         return collection.delete_one({'_id': self['_id']})
+
+    #
+    #
+    # JSON serialization
+    #
+    #
+
+    def to_json(self, **kwargs):
+        """
+        Convert the model instance to a json string.
+        """
+
+        class JSONEncoder(json.JSONEncoder):
+            def default(self, o):
+                if isinstance(o, ObjectId):
+                    return unicode(o)
+                elif isinstance(o, datetime):
+                    return unicode(o.strftime(DATETIME_FORMATS[0]))
+
+                return json.JSONEncoder.default(self, o)
+
+        return json.dumps(self, cls=JSONEncoder, **kwargs)
+
+    @classmethod
+    def from_json(cls, doc, **kwargs):
+        """
+        Convert a json string to a model instance.
+        Make use of the structure for decoding.
+        """
+
+        def json_decode(value, type):
+            if value is None:
+                return value
+
+            if type is datetime:
+                return datetime.strptime(value, DATETIME_FORMATS[0])
+            elif type is ObjectId:
+                return ObjectId(value)
+            else:
+                return value
+
+        def _convert_dict(doc, struct):
+            """
+            Recursively convert specified type
+            """
+            for key in struct:
+                s = struct[key]
+                if key not in doc:
+                    continue
+                old_value = doc[key]
+                if old_value is None:
+                    continue
+
+                if type(s) is type:
+                    doc[key] = json_decode(old_value, s)
+                # {}
+                if isinstance(s, dict):
+                    _convert_dict(old_value, s)
+                # []
+                if isinstance(s, list):
+                    _convert_list(old_value, s)
+
+        def _convert_list(doc, struct):
+            s = struct[0]
+            if doc is None:
+                return
+
+            for i, v in enumerate(doc):
+                old_value = doc[i]
+                if type(s) is type:
+                    doc[i] = json_decode(old_value, s)
+                # {}
+                if isinstance(s, dict):
+                    _convert_dict(old_value, s)
+                # []
+                if isinstance(s, list):
+                    _convert_list(old_value, s)
+
+        d = json.loads(doc)
+        _convert_dict(d, cls.structure)
+        return cls(d, False)
 
     def foobar(self):
         pass
@@ -1016,7 +1069,7 @@ def connect(db=None, alias=DEFAULT_CONNECTION_NAME, **kwargs):
 
 def disconnect(alias=DEFAULT_CONNECTION_NAME):
     """
-    断开数据库连接
+    断开数据库连接.
     """
     global _connections
     global _dbs
@@ -1042,13 +1095,13 @@ class DotDictProxy(MutableMapping, object):
         self._struct_ = struct
 
     def __getattr__(self, key):
-        if key in ['_obj_', '_struct_']:
+        if key in ['_obj_', '_struct_'] or key not in self._struct_:
             return object.__getattribute__(self, key)
 
         s = self._struct_[key]
         found = self._obj_.get(key, None)
-        # print "dict proxy getting attr %s with type %s = %s" % (key, type(s).__name__, found)
-        if not found:
+        # print "dict proxy getting attr %s for structure %s with value %s" % (key, type(s).__name__, found)
+        if found is None:
             if isinstance(s, dict):
                 found = {}
             elif isinstance(s, list):
@@ -1060,11 +1113,13 @@ class DotDictProxy(MutableMapping, object):
         return proxywrapper(found, s)
 
     def __setattr__(self, key, value):
-        if key in ['_obj_', '_struct_']:
+        if key in ['_obj_', '_struct_'] or key not in self._struct_:
             return object.__setattr__(self, key, value)
         # print "dict proxy setting attr %s with %s" % (key, value)
-        s = self._struct_[key]  # Just ensure key is valid
-        self._obj_[key] = value
+        if isinstance(value, (DotDictProxy, DotListProxy)):
+            self._obj_[key] = value._obj_
+        else:
+            self._obj_[key] = value
 
     def __delitem__(self, key):
         del self._obj_[key]
@@ -1092,10 +1147,17 @@ class DotListProxy(MutableSequence, object):
         self._struct_ = struct
 
     def __getitem__(self, index):
-        return proxywrapper(self._obj_[index], self._struct_[0])
+        # print "list proxy getting index %s for structure %s with value %s" % (index, self._struct_, self._obj_[index])
+        if isinstance(index, slice):
+            return proxywrapper(self._obj_[index], self._struct_)
+        else:
+            return proxywrapper(self._obj_[index], self._struct_[0])
 
     def __setitem__(self, index, value):
-        self._obj_[index] = value
+        if isinstance(value, (DotDictProxy, DotListProxy)):
+            self._obj_[index] = value._obj_
+        else:
+            self._obj_[index] = value
 
     def __delitem__(self, index):
         del self._obj_[index]
@@ -1114,8 +1176,8 @@ def proxywrapper(value, struct):
     """
     The top-level API for wrapping an arbitrary object.
     """
-    if isinstance(value, dict):
+    if isinstance(struct, dict):
         return DotDictProxy(value, struct)
-    if isinstance(value, list):
+    if isinstance(struct, list):
         return DotListProxy(value, struct)
     return value

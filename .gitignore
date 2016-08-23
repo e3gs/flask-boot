@@ -2,10 +2,16 @@
 *.pyc
 
 # Logs
-*.log
+app/logs/
 
 # Flask
 instance/
 
 # PyCharm
 .idea/
+
+# Data preparation
+app/scripts/*.json
+
+# Wsgi
+wsgi.pid

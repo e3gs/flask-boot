@@ -1,11 +1,38 @@
-{% extends "public/layout.html" %}
+{% extends "layout.html" %}
 
-{% block title %}
-Index
+{% block title %}Index{% endblock %}
+
+{% block style %}
+    <style>
+        #footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
 {% endblock %}
 
 {% block main %}
-<div class="container">
-    <h1>Hello Woorld</h1>
-</div><!-- /.container -->
+    <div id="main">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <h1>Index</h1>
+                    <p>This is index page.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block slogan %}
+    <div id="slogan">
+        <div class="container">
+            <div class="form-inline">
+                <div class="form-group">
+                    <p>Flask-boot is web project template/bootstrap application for fast prototyping.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}

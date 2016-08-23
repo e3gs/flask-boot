@@ -3,17 +3,12 @@
     admin.py
     ~~~~~~~~~~~~~~
 
-    Admin pages.
+    Admin pages/actions.
 
     :copyright: (c) 2016 by fengweimin.
     :date: 16/6/10
 """
 
-from flask import Blueprint, render_template
+from flask import Blueprint
 
 admin = Blueprint("admin", __name__)
-
-
-@admin.route("/crud/")
-def crud():
-    return render_template("admin/crud.html")

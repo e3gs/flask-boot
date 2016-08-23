@@ -11,41 +11,50 @@
 
 import logging
 import os
+from datetime import datetime
 from logging.handlers import SMTPHandler, RotatingFileHandler
 
 from bson.objectid import ObjectId
-from flask import Flask, g, request, flash, redirect, jsonify, url_for, render_template
+from flask import Flask, g, request, redirect, jsonify, url_for, render_template
 from flask_babel import Babel, gettext as _
 from flask_login import LoginManager, current_user
+from flask_mobility import Mobility
 from flask_principal import Principal, identity_loaded
 
 from app import views, helpers
-from app.converters import ListConverter
+from app.converters import ListConverter, BSONObjectIdConverter
 from app.extensions import mail, cache, mdb
+from app.jobs import init_schedule
 from app.models import User
+from app.tools import SSLSMTPHandler
 
 DEFAULT_APP_NAME = 'app'
 
 DEFAULT_BLUEPRINTS = (
-    (views.public, "/"),
-    (views.admin, "/admin")
+    (views.public, ''),
+    (views.admin, '/admin'),
+    (views.crud, '/crud'),
+    (views.blog, '/blog')
 )
 
 
-def create_app(config=None, blueprints=None):
+def create_app(blueprints=None):
     if blueprints is None:
         blueprints = DEFAULT_BLUEPRINTS
 
-    app = Flask(DEFAULT_APP_NAME)
+    app = Flask(DEFAULT_APP_NAME, instance_relative_config=True)
 
     # Url converter
     app.url_map.converters['list'] = ListConverter
+    app.url_map.converters['ObjectId'] = BSONObjectIdConverter
 
     # Config
-    app.config.from_pyfile(config)
+    app.config.from_object('app.config')
+    app.config.from_pyfile('config.py')
 
     # Chain
     configure_extensions(app)
+    configure_mobility(app)
     configure_login(app)
     configure_identity(app)
     configure_logging(app)
@@ -54,6 +63,7 @@ def create_app(config=None, blueprints=None):
     configure_template_filters(app)
     configure_context_processors(app)
     configure_i18n(app)
+    configure_schedulers(app)
 
     # Register blueprints
     configure_blueprints(app, blueprints)
@@ -65,6 +75,10 @@ def configure_extensions(app):
     mail.init_app(app)
     cache.init_app(app)
     mdb.init_app(app)
+
+
+def configure_mobility(app):
+    Mobility(app)
 
 
 def configure_login(app):
@@ -98,20 +112,32 @@ def configure_i18n(app):
         return request.accept_languages.best_match(accept_languages)
 
 
+def configure_schedulers(app):
+    init_schedule(app)
+
+
 def configure_context_processors(app):
     """
     Context processors run before the template is rendered and inject new values into the template context.
     """
 
     @app.context_processor
-    def config():
+    def inject_config():
         return dict(config=app.config)
+
+    @app.context_processor
+    def inject_debug():
+        return dict(debug=app.debug)
 
 
 def configure_template_filters(app):
     @app.template_filter()
     def timesince(value):
         return helpers.timesince(value)
+
+    @app.template_filter()
+    def date(value):
+        return helpers.date(value)
 
 
 def configure_before_handlers(app):
@@ -121,30 +147,35 @@ def configure_before_handlers(app):
 
 
 def configure_errorhandlers(app):
+    @app.errorhandler(400)
+    def server_error(error):
+        if request.is_xhr:
+            return jsonify(success=False, message=_('Bad request!'))
+        return render_template('errors/400.html', error=error)
+
     @app.errorhandler(401)
     def unauthorized(error):
         if request.is_xhr:
-            return jsonify(error=_("Login required"))
-        flash(_("Please login to see this page"), "error")
-        return redirect(url_for("public.login", next=request.path))
+            return jsonify(success=False, message=_('Login required!'), code=1)
+        return redirect(url_for('public.login', next=request.path))
 
     @app.errorhandler(403)
     def forbidden(error):
         if request.is_xhr:
-            return jsonify(error=_('Sorry, page not allowed'))
-        return render_template("errors/403.html", error=error)
+            return jsonify(success=False, message=_('Sorry, Not allowed or forbidden!'))
+        return render_template('errors/403.html', error=error)
 
     @app.errorhandler(404)
     def page_not_found(error):
         if request.is_xhr:
-            return jsonify(error=_('Sorry, page not found'))
-        return render_template("errors/404.html", error=error)
+            return jsonify(success=False, message=_('Sorry, page not found!'))
+        return render_template('errors/404.html', error=error)
 
     @app.errorhandler(500)
     def server_error(error):
         if request.is_xhr:
-            return jsonify(error=_('Sorry, an error has occurred'))
-        return render_template("errors/500.html", error=error)
+            return jsonify(success=False, message=_('Sorry, an error has occurred!'))
+        return render_template('errors/500.html', error=error)
 
 
 def configure_blueprints(app, blueprints):
@@ -153,8 +184,14 @@ def configure_blueprints(app, blueprints):
 
 
 def configure_logging(app):
-    mail_handler = SMTPHandler(app.config['MAIL_SERVER'], app.config['MAIL_SENDER'], app.config['MAIL_SUPPORTERS'],
-                               'application error', (app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD']))
+    mail_config = [(app.config['MAIL_SERVER'], app.config['MAIL_PORT']),
+                   app.config['MAIL_DEFAULT_SENDER'], app.config['ADMINS'],
+                   '[Error] %s encountered errors on %s' % (app.config['DOMAIN'], datetime.now().strftime('%Y/%m/%d')),
+                   (app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])]
+    if app.config['MAIL_USE_SSL']:
+        mail_handler = SSLSMTPHandler(*mail_config)
+    else:
+        mail_handler = SMTPHandler(*mail_config)
 
     mail_handler.setLevel(logging.ERROR)
     app.logger.addHandler(mail_handler)
@@ -172,3 +209,7 @@ def configure_logging(app):
     error_file_handler.setLevel(logging.ERROR)
     error_file_handler.setFormatter(formatter)
     app.logger.addHandler(error_file_handler)
+
+    # Flask运行在产品模式时, 只会输出ERROR, 此处使之输入INFO
+    if not app.config['DEBUG']:
+        app.logger.setLevel(logging.INFO)
