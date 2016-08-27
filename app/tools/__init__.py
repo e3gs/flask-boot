@@ -9,5 +9,5 @@
     :date: 16/6/24
 """
 
-from notifier import send_support_email, SupportMailType
+from notifier import send_support_email
 from sslsmtphandler import SSLSMTPHandler

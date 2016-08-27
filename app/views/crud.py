@@ -129,7 +129,7 @@ def save(model_name, record_id=None):
     return jsonify(success=True, message='Save successfully. (%s)' % unicode(record._id))
 
 
-@crud.route('/delete/<string:model_name>/<ObjectId:record_id>', methods=('POST',))
+@crud.route('/delete/<string:model_name>/<ObjectId:record_id>', methods=('GET', 'POST'))
 def delete(model_name, record_id):
     """
     Delete record.

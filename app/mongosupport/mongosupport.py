@@ -1163,7 +1163,10 @@ class DotListProxy(MutableSequence, object):
         del self._obj_[index]
 
     def insert(self, index, value):
-        return self._obj_.insert(index, value)
+        if isinstance(value, (DotDictProxy, DotListProxy)):
+            self._obj_.insert(index, value._obj_)
+        else:
+            self._obj_.insert(index, value)
 
     def __len__(self):
         return self._obj_.__len__()

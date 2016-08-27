@@ -4,10 +4,8 @@
 
 {% block style %}
     <style>
-        #footer {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
+        #main {
+            min-height: 400px;
         }
     </style>
 {% endblock %}
@@ -46,9 +44,9 @@
             // Post
             $.post("action", {"r": Math.random()}, function (result) {
                 if (result.success) {
-                    showSuccess(result.message)
+                    showSuccess(result.message);
                 } else {
-                    showError(result.message)
+                    showError(result.message);
                 }
                 btn.removeClass("doing");
                 btn[method](oldLabel);

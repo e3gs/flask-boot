@@ -36,5 +36,11 @@ def deploy():
         if p == 'y':
             run('git pull')
             # Restart unicorn
-            run('killall -9 gunicorn')
-            run('gunicorn wsgi:app -p wsgi.pid -b 0.0.0.0:6060 -D')
+            # run('killall -9 gunicorn')
+            # run('gunicorn wsgi:app -p wsgi.pid -b 0.0.0.0:6060 -D --log-file app/logs/gunicorn.log')
+            run('kill -HUP `cat wsgi.pid`')
+
+
+def ustart():
+    with cd(project_folder):
+        run('gunicorn wsgi:app -p wsgi.pid -b 0.0.0.0:6060 --log-file app/logs/gunicorn.log')

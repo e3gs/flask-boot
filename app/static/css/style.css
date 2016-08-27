@@ -360,6 +360,12 @@ fieldset[disabled] .navbar-ada .btn-link:focus {
     margin: 40px;
 }
 
+@media (max-width: 767px) {
+    #main {
+        margin: 15px 0;
+    }
+}
+
 .card {
     background: #fff;
     margin-bottom: 20px;
@@ -404,6 +410,31 @@ fieldset[disabled] .navbar-ada .btn-link:focus {
     color: #999;
 }
 
+.post-with-pic {
+    padding: 0 0 20px 0;
+}
+
+.post-with-pic .post-title {
+    display: block;
+    font-size: 22px;
+    color: black;
+    text-decoration: none;
+    text-align: center;
+    margin: 10px 10px 0 10px;
+    line-height: 1.2em;
+}
+
+.post-with-pic .post-tag {
+    text-align: center;
+    display: block;
+}
+
+.post-with-pic .post-date {
+    display: block;
+    color: #999;
+    text-align: center;
+}
+
 .single-post {
     position: relative;
 }
@@ -428,13 +459,9 @@ fieldset[disabled] .navbar-ada .btn-link:focus {
 
 .single-post .post-pics a {
     display: block;
-    float: left;
-    width: 50%;
-}
-
-.single-post .post-pics a img {
-    /*height: 500px;*/
-    width: 95%;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 20px;
 }
 
 .single-post .post-date {

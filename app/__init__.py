@@ -196,7 +196,7 @@ def configure_logging(app):
     mail_handler.setLevel(logging.ERROR)
     app.logger.addHandler(mail_handler)
 
-    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+    formatter = logging.Formatter('%(asctime)s %(process)d-%(thread)d %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
 
     debug_log = os.path.join(app.root_path, app.config['DEBUG_LOG'])
     debug_file_handler = RotatingFileHandler(debug_log, maxBytes=100000, backupCount=10)

@@ -21,7 +21,7 @@ from app.decorators import user_not_rejected, user_not_evil
 from app.jobs import post_view_times_counter
 from app.models import Post, Tag, User
 from app.mongosupport import Pagination
-from app.tools import SupportMailType, send_support_email
+from app.tools import send_support_email
 
 blog = Blueprint('blog', __name__)
 
@@ -43,7 +43,7 @@ def index():
     count = Post.count(condition)
     cursor = Post.find(condition, skip=start, limit=PAGE_COUNT, sort=[('createTime', pymongo.DESCENDING)])
     pagination = Pagination(page, PAGE_COUNT, count)
-    return render_template('blog/index.html', posts=cursor, pagination=pagination, tags=all_tags())
+    return render_template('blog/index.html', posts=list(cursor), pagination=pagination, tags=all_tags())
 
 
 def all_tags():
@@ -107,7 +107,8 @@ def comment(post_id):
     post.comments.insert(0, cmt)
     post.save()
 
-    send_support_email(SupportMailType.NEW_POST_COMMENT, post, content)
+    send_support_email('comment()',
+                       u'New comment %s on post %s.' % (content, post._id))
 
     return jsonify(success=True, message=_('Save comment successfully.'))
 

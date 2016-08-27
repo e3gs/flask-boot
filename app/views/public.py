@@ -19,7 +19,7 @@ from wtforms import StringField, PasswordField, BooleanField, HiddenField
 from wtforms.validators import DataRequired, Email
 
 from app.models import User
-from app.tools import send_support_email, SupportMailType
+from app.tools import send_support_email
 
 public = Blueprint('public', __name__)
 
@@ -30,6 +30,14 @@ def index():
     Index page.
     """
     return render_template('public/index.html')
+
+
+@public.route('/contact')
+def contact():
+    """
+    Index page.
+    """
+    return render_template('public/contact.html')
 
 
 @public.route('/blank')
@@ -128,7 +136,7 @@ def signup():
         u.save()
 
         current_app.logger.info('A new user created, %s' % u)
-        send_support_email(SupportMailType.NEW_USER, u)
+        send_support_email('signup()', u'New user %s with id %s.' % (u.email, u._id))
 
         # Keep the user info in the session using Flask-Login
         login_user(u)

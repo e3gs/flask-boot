@@ -495,7 +495,7 @@
                         var hidden = $(this).next(":hidden");
                         if (inav.is(".iseditor")) {
                             var type = hidden.attr("model-type");
-                            var val = $(this).html().trim();
+                            var val = $(this).text().trim();
                             if (val.length > 0) {
                                 msg = validate(type, val)
                                 if (msg) {
@@ -511,7 +511,8 @@
                                 if ($(this).is(".string")) {
                                     v = '"' + v + '"';
                                 }
-                                $(this).html('<span>' + v + '</span>');
+                                span = $("<span>").text(v);
+                                $(this).html(span);
                             } else {
                                 $(this).html('<span class="null">Null</span>');
                             }
