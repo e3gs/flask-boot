@@ -81,7 +81,7 @@
             border-radius: 2px;
             opacity: 0.9;
             display: inline-block;
-            margin: -1px 5px 0 0px;
+            margin: -1px 5px 0 5px;
         }
 
         #editor .ivalue {
@@ -442,7 +442,7 @@
                 <span>{{ value }}</span>
             {% endif %}
         </div>
-    {%- elif type.__name__ in ['str', 'unicode', 'ObjectId'] -%}
+    {%- elif type.__name__ in ['unicode', 'ObjectId'] -%}
         <div class="ivalue string" name="{{ name }}">
             {% if value is none %}
                 <span class="null">Null</span>
@@ -508,11 +508,18 @@
                             $(this).attr("contenteditable", false);
                             if (hidden.val()) {
                                 var v = hidden.val()
+                                var more = ""
                                 if ($(this).is(".string")) {
+                                    var length = v.length
+                                    if (length > 200) {
+                                        v = v.substr(0, 200) + " ..."
+                                        more = "<i class='ilabel'>" + length + " chars</i>";
+                                    }
                                     v = '"' + v + '"';
                                 }
                                 span = $("<span>").text(v);
                                 $(this).html(span);
+                                $(this).append(more)
                             } else {
                                 $(this).html('<span class="null">Null</span>');
                             }
@@ -574,7 +581,7 @@
             $(".get-current-time").click(function () {
                 var irow = $(this).closest(".irow");
                 var ivalue = irow.find("> .inav > .ivalue");
-                var val = moment().format("YYYY-MM-DD HH:mm:ss.SSS");
+                var val = moment.utc().format("YYYY-MM-DD HH:mm:ss.SSSSSS");
                 ivalue.html("<span>" + val + "</span>");
                 ivalue.next(":hidden").val(val);
             });
@@ -588,7 +595,6 @@
              long,
              float,
              unicode,
-             str,
              datetime,
              ObjectId,
              - SchemaOperator
@@ -602,7 +608,7 @@
             } else if ($.inArray(type, ["unicode", "str"]) >= 0) {
                 //
             } else if ($.inArray(type, ["datetime"]) >= 0) {
-                msg = moment(val, ["YYYY-MM-DD HH:mm:ss.SSS", "YYYY-MM-DD HH:mm:ss"], true).isValid() ? null : "Invalid " + type + "!";
+                msg = moment(val, ["YYYY-MM-DD HH:mm:ss.SSSSSS", "YYYY-MM-DD HH:mm:ss.SSS", "YYYY-MM-DD HH:mm:ss"], true).isValid() ? null : "Invalid " + type + "!";
             } else if ($.inArray(type, ["ObjectId"]) >= 0) {
                 msg = val.match(/^[0-9a-fA-F]{24}$/) ? null : "Invalid " + type + "!";
             }
