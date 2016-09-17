@@ -298,6 +298,18 @@
             color: #cccccc !important;
         }
 
+        #editor .imulti.list > .ilist > .irow > .inav > .ikey {
+            cursor: move;
+        }
+
+        .ghost {
+            opacity: 0.2;
+        }
+
+        .chosen {
+            color: #fff;
+            background-color: #c00;
+        }
     </style>
 {% endblock %}
 
@@ -442,12 +454,24 @@
                 <span>{{ value }}</span>
             {% endif %}
         </div>
-    {%- elif type.__name__ in ['unicode', 'ObjectId'] -%}
+    {%- elif type.__name__ in ['unicode'] -%}
         <div class="ivalue string" name="{{ name }}">
             {% if value is none %}
                 <span class="null">Null</span>
             {% else %}
-                <span>"{{ value }}"</span>
+                {% if value|length > 200 %}
+                    <span>"{{ value[:200] }} ..."<i class='ilabel'>{{ value|length }} chars</i></span>
+                {% else %}
+                    <span>"{{ value }}"</span>
+                {% endif %}
+            {% endif %}
+        </div>
+    {%- elif type.__name__ in ['ObjectId'] -%}
+        <div class="ivalue objectid" name="{{ name }}">
+            {% if value is none %}
+                <span class="null">Null</span>
+            {% else %}
+                <span>{{ value }}</span>
             {% endif %}
         </div>
     {%- else -%}
@@ -460,6 +484,7 @@
 
 {% block script %}
     <script type="text/javascript" src="{{ base_url() }}/js/moment.min.js"></script>
+	<script type="text/javascript" src="{{ base_url() }}/js/Sortable.min.js"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             // idesc
@@ -478,7 +503,7 @@
             // ivalue
             $(".ivalue").each(function (i, n) {
                 // number/string/datetime
-                if ($(n).is(".number") || $(n).is(".string") || $(n).is(".datetime")) {
+                if ($(n).is(".number") || $(n).is(".string") || $(n).is(".datetime") || $(n).is(".objectid")) {
                     // Enter editing
                     $(n).on("click", function () {
                         var inav = $(this).parent(".inav");
@@ -542,6 +567,12 @@
             });
 
             // list
+            $(".imulti.list > .ilist").each(function (i, n) {
+                Sortable.create(n, {
+                    handle: ".ikey",
+                    ghostClass: "ghost"
+                });
+            });
             $(".add-list-item").click(function () {
                 var irow = $(this).closest(".irow");
                 var inav = irow.children(".inav");
