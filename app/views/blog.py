@@ -110,11 +110,12 @@ def new(post_id=None):
             else:
                 existing = Post.find_one({'_id': post_id})
                 existing.title = post.title
-                existing.tags = post.tags
+                existing.tids = post.tids
                 existing.body = post.body
                 existing.save()
                 current_app.logger.info('Successfully change a post %s' % post._id)
         except:
+            current_app.logger.exception('Failed when saving post')
             return jsonify(success=False, message=_('Failed when saving the post, please try again later!'))
 
         return jsonify(success=True, message=_('Save the post successfully.'), pid=str(post_id))
