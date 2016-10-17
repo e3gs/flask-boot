@@ -43,7 +43,7 @@
                                         </div>
                                     </div>
                                     <div class="post-body mb-10">
-                                        {{ p.body|truncate(300) }}
+                                        {{ p.body|striptags|truncate(300) }}
                                     </div>
                                     <span class="post-date clearfix">
                                         <i class="fa fa-clock-o"></i> {{ p.createTime|timesince }}
@@ -103,7 +103,7 @@
                             <div class="panel panel-default">
                                 <div class="panel-heading">{{ _('Admin:') }}</div>
                                 <div class="panel-body">
-                                    <a href="/crud/index/post" target="_blank">{{ _('Add post') }}</a>
+                                    <a href="/blog/post/new">{{ _('Add post') }}</a>
                                 </div>
                             </div>
                         </div>

@@ -13,14 +13,14 @@ from datetime import datetime
 
 import pymongo
 from bson.objectid import ObjectId
-from flask import Blueprint, request, render_template, abort, jsonify
+from flask import Blueprint, request, render_template, abort, jsonify, current_app
 from flask_babel import gettext as _
 from flask_login import current_user, login_required
 
 from app.decorators import user_not_rejected, user_not_evil
 from app.jobs import post_view_times_counter
 from app.models import Post, Tag, User
-from app.mongosupport import Pagination
+from app.mongosupport import Pagination, populate_model
 from app.tools import send_support_email
 
 blog = Blueprint('blog', __name__)
@@ -72,6 +72,52 @@ def post(post_id):
             uids.add(r.uid)
     user_dict = {u._id: u for u in User.find({'_id': {'$in': list(uids)}})}
     return render_template('blog/post.html', id=post_id, post=p, tags=all_tags(), user_dict=user_dict)
+
+
+@blog.route('/post/new', methods=('GET', 'POST'))
+@blog.route('/post/change/<ObjectId:post_id>', methods=('GET', 'POST'))
+@login_required
+@user_not_rejected
+def new(post_id=None):
+    # Open page
+    if request.method == 'GET':
+        p = None
+        # Change
+        if post_id:
+            p = Post.find_one({'_id': post_id})
+            if not p:
+                abort(404)
+
+        return render_template('blog/new.html', post=p, tags=all_tags())
+    # Handle post request
+    else:
+        try:
+            post = populate_model(request.form, Post)
+            if not post.title:
+                return jsonify(success=False, message=_('Post title can not be blank!'))
+            if not post.body:
+                return jsonify(success=False, message=_('Post body can not be blank!'))
+            if not post.tids:
+                return jsonify(success=False, message=_('Post must at least have a tag!'))
+
+            # New
+            if not post_id:
+                post.uid = current_user._id
+                post.save()
+                post_id = post._id
+                current_app.logger.info('Successfully new a post %s' % post._id)
+            # Change
+            else:
+                existing = Post.find_one({'_id': post_id})
+                existing.title = post.title
+                existing.tags = post.tags
+                existing.body = post.body
+                existing.save()
+                current_app.logger.info('Successfully change a post %s' % post._id)
+        except:
+            return jsonify(success=False, message=_('Failed when saving the post, please try again later!'))
+
+        return jsonify(success=True, message=_('Save the post successfully.'), pid=str(post_id))
 
 
 @blog.route('/comment/<ObjectId:post_id>', methods=('POST',))
@@ -142,9 +188,9 @@ def reply(post_id, comment_id):
         'time': now
     }
 
-    cmt.replys.insert(0, reply)
+    cmt.replys.append(reply)
     post.save()
 
-    send_support_email(SupportMailType.NEW_POST_COMMENT, post, content)
+    send_support_email('reply()', post, content)
 
     return jsonify(success=True, message=_('Save reply successfully.'))

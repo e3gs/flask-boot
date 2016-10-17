@@ -6,8 +6,8 @@ function toast(msg, type) {
     $.bootstrapGrowl(msg, {
         ele: 'body', // which element to append to
         type: type, // (null, 'info', 'danger', 'success')
-        offset: {from: 'top', amount: 80}, // 'top', or 'bottom'
-        align: 'center', // ('left', 'right', or 'center')
+        offset: {from: 'top', amount: 20}, // 'top', or 'bottom'
+        align: 'right', // ('left', 'right', or 'center')
         width: 500, // (integer, or 'auto')
         delay: 5000, // Time while the message will be displayed. It's not equivalent to the *demo* timeOut!
         allow_dismiss: false, // If true then will display a cross to close the popup.
