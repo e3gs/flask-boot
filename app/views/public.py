@@ -44,7 +44,7 @@ def styleguide():
     """
     Blank page.
     """
-    return render_template('public/blank.html')
+    return render_template('public/styleguide.html')
 
 
 # ----------------------------------------------------------------------------------------------------------------------

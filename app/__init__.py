@@ -20,6 +20,7 @@ from flask_babel import Babel, gettext as _
 from flask_login import LoginManager, current_user
 from flask_mobility import Mobility
 from flask_principal import Principal, identity_loaded
+from werkzeug.urls import url_quote
 
 from app import views
 from app.extensions import mail, cache, mdb
@@ -34,7 +35,8 @@ DEFAULT_BLUEPRINTS = (
     (views.public, ''),
     (views.admin, '/admin'),
     (views.crud, '/crud'),
-    (views.blog, '/blog')
+    (views.blog, '/blog'),
+    (views.seo, '/seo')
 )
 
 
@@ -138,6 +140,19 @@ def configure_template_filters(app):
     @app.template_filter()
     def date(value):
         return helpers.date(value)
+
+    @app.template_filter()
+    def commas(value):
+        """Add commas to an number."""
+        if type(value) in [int, long]:
+            return '{:,d}'.format(value)
+        else:
+            return "{:,.2f}".format(value)
+
+    @app.template_filter()
+    def urlquote(value, charset='utf-8'):
+        """Url Quote."""
+        return url_quote(value, charset)
 
 
 def configure_before_handlers(app):
