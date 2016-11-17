@@ -2,114 +2,100 @@
 
 {% block title %}CRUD Index{% endblock %}
 
-{% block style %}
-    <style>
-        h4 {
-            margin-top: 0;
-        }
-
-        .right {
-            min-height: 400px;
-        }
-    </style>
-{% endblock %}
-
-{% block main %}
-    <div id="main">
-        <div class="container">
-            <div class="row">
-                <!-- left start -->
-                <div class="left col-md-2">
-                    <h4>已注册的数据模型</h4>
-                    <div class="list-group">
-                        {% for m in models %}
-                            <a href="/crud/index/{{ m.__name__|lower }}"
-                               class="list-group-item {{ 'active' if m.__name__.lower()==model.__name__.lower() }}">
-                                {{ m.__name__ }}
-                            </a>
-                        {% endfor %}
-                    </div>
+{% block main_inner %}
+    <div class="container">
+        <div class="row">
+            <!-- left start -->
+            <div class="left col-md-2">
+                <h4>已注册的数据模型</h4>
+                <div class="list-group">
+                    {% for m in models %}
+                        <a href="/crud/index/{{ m.__name__|lower }}"
+                           class="list-group-item {{ 'active' if m.__name__.lower()==model.__name__.lower() }}">
+                            {{ m.__name__ }}
+                        </a>
+                    {% endfor %}
                 </div>
-                <!-- left end -->
+            </div>
+            <!-- left end -->
 
-                <!-- right start -->
-                <div class="right col-md-10">
-                    <h4>查询{{ model.__name__ }}</h4>
-                    <hr>
-                    <form id="search-form" class="form-horizontal">
-                        {% for k,v in index_dict.iteritems() %}
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label">{{ k }}</label>
-                                <div class="col-sm-10">
-                                    <input type="text" class="form-control" name="{{ model.__name__|lower }}.{{ k }}"
-                                           {% if search_record[k] %}value="{{ search_record[k] }}"{% endif %}>
-                                </div>
-                            </div>
-                        {% endfor %}
+            <!-- right start -->
+            <div class="right col-md-10">
+                <h4>查询{{ model.__name__ }}</h4>
+                <hr>
+                <form id="search-form" class="form-horizontal">
+                    {% for k,v in index_dict.iteritems() %}
                         <div class="form-group">
-                            <div class="col-sm-offset-2 col-sm-10">
-                                <a href="javascript:;" class="btn btn-default btn-sm" onclick="query(1)">查询</a>
-                                &nbsp;&nbsp;
-                                <a href="/crud/new/{{ model.__name__|lower }}" class="btn btn-default btn-sm">新建</a>
+                            <label class="col-sm-2 control-label">{{ k }}</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" name="{{ model.__name__|lower }}.{{ k }}"
+                                       {% if search_record[k] %}value="{{ search_record[k] }}"{% endif %}>
                             </div>
                         </div>
-                    </form>
-                    <hr>
-                    <table class="table table-bordered table-hover table-condensed">
+                    {% endfor %}
+                    <div class="form-group">
+                        <div class="col-sm-offset-2 col-sm-10">
+                            <a href="javascript:;" class="btn btn-primary btn-sm" onclick="query(1)">查询</a>
+                            &nbsp;&nbsp;
+                            <a href="/crud/new/{{ model.__name__|lower }}" class="btn btn-default btn-sm">新建</a>
+                        </div>
+                    </div>
+                </form>
+                <hr>
+                <table class="table table-bordered table-hover table-condensed">
+                    <tr>
+                        {% for f in index_dict %}
+                            <th>{{ f }}</th>
+                        {% endfor %}
+                        <th>操作</th>
+                    </tr>
+                    {% for r in records %}
                         <tr>
                             {% for f in index_dict %}
-                                <th>{{ f }}</th>
+                                <td>{{ r[f] }}</td>
                             {% endfor %}
-                            <th>操作</th>
+                            <td>
+                                <a href="/crud/change/{{ model.__name__|lower }}/{{ r._id|string }}"><i
+                                        class="fa fa-edit"></i></a>
+                                &nbsp;
+                                <a href="javascript:;" onclick="deleteRecord($(this))" rid="{{ r._id }}"><i
+                                        class="fa fa-trash-o"></i></a>
+                            </td>
                         </tr>
-                        {% for r in records %}
-                            <tr>
-                                {% for f in index_dict %}
-                                    <td>{{ r[f] }}</td>
-                                {% endfor %}
-                                <td>
-                                    <a href="/crud/change/{{ model.__name__|lower }}/{{ r._id|string }}"><i
-                                            class="fa fa-edit"></i></a>
-                                    &nbsp;
-                                    <a href="javascript:;" onclick="deleteRecord($(this))" rid="{{ r._id }}"><i
-                                            class="fa fa-trash-o"></i></a>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="{{ model.required_fields|length + 1 }}">没有找到相关数据。</td>
-                            </tr>
-                        {% endfor %}
-                    </table>
-                    {% if pagination.pages > 0 %}
-                        <div class="text-center">
-                            <ul class="pagination" style="margin-bottom:20px;">
-                                {% if pagination.has_prev %}
-                                    <li><a href="javascript:;" onclick="query({{ pagination.page - 1 }})"><</a></li>
-                                {% endif %}
-                                {% for page in pagination.iter_pages() %}
-                                    {% if page %}
-                                        {% if page != pagination.page %}
-                                            <li><a href="javascript:;" onclick="query({{ page }})">{{ page }}</a></li>
-                                        {% else %}
-                                            <li class="active">
-                                                <a href="javascript:;">{{ page }}<span class="sr-only">(current)</span>
-                                                </a>
-                                            </li>
-                                        {% endif %}
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ model.required_fields|length + 1 }}">没有找到相关数据。</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+                {% if pagination.pages > 0 %}
+                    <div class="text-center">
+                        <ul class="pagination" style="margin-bottom:20px;">
+                            {% if pagination.has_prev %}
+                                <li><a href="javascript:;" onclick="query({{ pagination.page - 1 }})"><</a></li>
+                            {% endif %}
+                            {% for page in pagination.iter_pages() %}
+                                {% if page %}
+                                    {% if page != pagination.page %}
+                                        <li><a href="javascript:;" onclick="query({{ page }})">{{ page }}</a></li>
                                     {% else %}
-                                        <li><a href="javascript:;">...</a></li>
+                                        <li class="active">
+                                            <a href="javascript:;">{{ page }}<span class="sr-only">(current)</span>
+                                            </a>
+                                        </li>
                                     {% endif %}
-                                {% endfor %}
-                                {% if pagination.has_next %}
-                                    <li><a href="javascript:;" onclick="query({{ pagination.page + 1 }})">></a></li>
+                                {% else %}
+                                    <li><a href="javascript:;">...</a></li>
                                 {% endif %}
-                            </ul>
-                        </div>
-                    {% endif %}
-                </div>
-                <!-- right end -->
+                            {% endfor %}
+                            {% if pagination.has_next %}
+                                <li><a href="javascript:;" onclick="query({{ pagination.page + 1 }})">></a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                {% endif %}
             </div>
+            <!-- right end -->
         </div>
     </div>
 {% endblock %}

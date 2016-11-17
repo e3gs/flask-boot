@@ -1,153 +1,148 @@
 {% extends "layout.html" %}
 
-{% block title -%}
-    {{ post.title }}
-{%- endblock %}
+{% block title %}{{ post.title }}{% endblock %}
 
 {% block style %}
     <style>
-        .post-body img {
+        .panel-body img {
             max-width: 100%;
         }
     </style>
 {% endblock %}
 
-{% block main %}
-    <div id="main">
-        <div class="container">
-            <div class="row">
-                <!-- left start -->
-                <div class="col-md-8">
-                    <div class="card single-post">
-                        <span class="post-tag">
-                            {% for t in post.tags %}
-                                #{{ _(t.name) }}
-                            {% endfor %}
-                        </span>
-                        <h2 class="post-title">{{ post.title }}</h2>
-                        <hr>
-                        <div class="post-body">{{ post.body|safe }}</div>
-                        {% if post.pics %}
-                            <div class="post-pics">
-                                {% for p in post.pics %}
-                                    <a><img src="{{ p }}"></a>
-                                {% endfor %}
-                                <span class="clearfix"></span>
-                            </div>
-                        {% endif %}
-                        <span class="post-date">
-                            <i class="fa fa-clock-o"></i> {{ post.createTime|timesince }}
+{% block main_inner %}
+    <div class="container">
+        <div class="row">
+            <!-- left start -->
+            <div class="col-md-8">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3>{{ post.title }}</h3>
+                        <p class="panel-sub-title">{% for t in post.tags %}
+                            #{{ _(t.name) }}
+                        {% endfor %}</p>
+                    </div>
+                    <div class="panel-body">
+                        {{ post.body|safe }}
+                    </div>
+                    <div class="panel-footer">
+                        <span><i class="fa fa-clock-o"></i> {{ post.createTime|timesince }}</span>
+                        <span class="pull-right">
                             <i class="fa fa-eye pl-10"></i> {{ post.viewTimes }}&nbsp;{{ _('views') }}
                         </span>
                     </div>
+                </div>
 
-                    <div class="card">
-                        <h3 id="h3-comments">{{ _('There are totally %(count)s comments', count=post.comments|length) }}</h3>
-                        <hr>
-                        {% for c in post.comments %}
-                            <div class="media comment mb-20">
-                                <div class="media-left">
-                                    <a href="javascript:;">
-                                        {% set user = user_dict[c.uid] %}
-                                        {% if user and user.head %}
-                                            <img class="media-object comment-user-head"
-                                                 src="{{ user.head }}">
-                                        {% else %}
-                                            <i class="fa fa-user"></i>
-                                        {% endif %}
+
+                <div id="div-comments" class="p-t-10 m-b-20">
+                    <h4>{{ _('There are totally %(count)s comments', count=post.comments|length) }}</h4>
+                    <hr>
+                    {% for c in post.comments %}
+                        <div class="media m-b-20">
+                            <div class="media-left">
+                                <a href="javascript:;">
+                                    {% set user = user_dict[c.uid] %}
+                                    <img class="media-object thumb-sm"
+                                         src="{{ user.head if user and user.head else '/static/img/avatar.png' }}">
+                                </a>
+                            </div>
+                            <div class="media-body">
+                                <h4 class="media-heading"><a href="javascript:;">{{ user.name if user else '-' }}</a>
+                                </h4>
+                                <p>{{ c.content }}</p>
+                                <div>
+                                    <span class="text-muted">{{ c.time|timesince }}</span>
+                                    <a href="javascript:;" class="pull-right text-muted" onclick="toggleReply($(this))">
+                                        <i class="fa fa-reply"></i> {{ _('Reply') }}
                                     </a>
-                                </div>
-                                <div class="media-body">
-                                    <a href="javascript:;"
-                                       class="media-heading comment-user-name">{{ user.name if user else '-' }}</a>
-                                    <p class="comment-content">{{ c.content }}</p>
-                                    <div>
-                                        <span class="comment-date">{{ c.time|timesince }}</span>
-                                        <a href="javascript:;" class="pull-right" onclick="toggleReply($(this))">
-                                            <i class="fa fa-reply"></i> {{ _('Reply') }}
-                                        </a>
-                                        <div class="well well-sm mt-10 reply-form" style="display:none">
-                                            <input class="form-control input-sm"/>
-                                            <a href="javascript:;" onclick="reply($(this))"
-                                               cid="{{ c.id }}" rid="{{ c.uid }}">{{ _('Submit') }}</a>
+                                    <div class="well well-sm m-t-10 m-b-0 reply-form" style="display:none">
+                                        <div class="input-group">
+                                            <input class="form-control"/>
+                                            <span class="input-group-btn">
+                                                <a href="javascript:;" onclick="reply($(this))" class="btn btn-default"
+                                                   cid="{{ c.id }}" rid="{{ c.uid }}">{{ _('Submit') }}
+                                                </a>
+                                            </span>
                                         </div>
+                                    </div>
+                                    {% for r in c.replys %}
                                         <hr>
-                                        {% for r in c.replys %}
-                                            <div class="media">
-                                                <div class="media-left">
-                                                    <a href="javascript:;">
-                                                        {% set user = user_dict[r.uid] %}
-                                                        {% if user and user.head %}
-                                                            <img class="media-object comment-user-head"
-                                                                 src="{{ user.head }}">
-                                                        {% else %}
-                                                            <i class="fa fa-user"></i>
-                                                        {% endif %}
-                                                    </a>
-                                                </div>
-                                                <div class="media-body">
-                                                    <a href="javascript:;"
-                                                       class="media-heading comment-user-name">{{ user.name if user else '-' }}</a>
+                                        <div class="media m-b-20">
+                                            <div class="media-left">
+                                                <a href="javascript:;">
+                                                    {% set user = user_dict[r.uid] %}
+                                                    <img class="media-object thumb-sm"
+                                                         src="{{ user.head if user and user.head else '/static/img/avatar.png' }}">
+                                                </a>
+                                            </div>
+                                            <div class="media-body">
+                                                <h5 class="media-heading"><a
+                                                        href="javascript:;">{{ user.name if user else '-' }}</a>
                                                     {{ _('replys') }}
                                                     {% set ruser = user_dict[r.rid] %}
-                                                    <a href="javascript:;"
-                                                       class="media-heading comment-user-name">{{ ruser.name if ruser else '-' }}</a>
-                                                    <p class="comment-content">{{ r.content }}</p>
-                                                    <div>
-                                                        <span class="comment-date">{{ r.time|timesince }}</span>
-                                                        <a href="javascript:;" class="pull-right"
-                                                           onclick="toggleReply($(this))">
-                                                            <i class="fa fa-reply"></i> {{ _('Reply') }}
-                                                        </a>
-                                                        <div class="well well-sm mt-10 reply-form" style="display:none">
-                                                            <input class="form-control input-sm"/>
-                                                            <a href="javascript:;" onclick="reply($(this))"
-                                                               cid="{{ c.id }}" rid="{{ r.uid }}">{{ _('Submit') }}</a>
+                                                    <a href="javascript:;">{{ ruser.name if ruser else '-' }}</a>
+                                                </h5>
+                                                <p>{{ r.content }}</p>
+                                                <div>
+                                                    <span class="text-muted">{{ r.time|timesince }}</span>
+                                                    <a href="javascript:;" class="pull-right text-muted"
+                                                       onclick="toggleReply($(this))">
+                                                        <i class="fa fa-reply"></i> {{ _('Reply') }}
+                                                    </a>
+                                                    <div class="well well-sm m-t-10 m-b-0 reply-form"
+                                                         style="display:none">
+                                                        <div class="input-group">
+                                                            <input class="form-control"/>
+                                                            <span class="input-group-btn">
+                                                                <a href="javascript:;" onclick="reply($(this))"
+                                                                   class="btn btn-default"
+                                                                   cid="{{ c.id }}"
+                                                                   rid="{{ r.uid }}">{{ _('Submit') }}</a>
+                                                            </span>
                                                         </div>
                                                     </div>
+
                                                 </div>
                                             </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                        <h3 class="mt-20">{{ _('Leave a comment') }}</h3>
-                        <div>
-                            <textarea class="form-control mb-10" rows="3"></textarea>
-                            <button class="btn btn-ada-dark btn-sm"
-                                    onclick="comment($(this))">{{ _('Submit') }}</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- left end -->
-
-                <!-- sidebar start -->
-                <div class="col-md-4">
-                    <div class="card">
-                        <div class="tags">
-                            <h3>{{ _('Tags') }}</h3>
-                            <a href="/blog/index" class="btn btn-ada-dark btn-tag">#{{ _('All') }}</a>
-                            {% for t in tags %}
-                                <a href="/blog/index?t={{ t._id }}"
-                                   class="btn btn-ada-dark btn-tag">#{{ _(t.name) }}</a>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% if current_user.is_admin %}
-                        <div class="block clearfix">
-                            <div class="panel panel-default">
-                                <div class="panel-heading">{{ _('Admin:') }}</div>
-                                <div class="panel-body">
-                                    <a href="/blog/post/change/{{ post._id }}">{{ _('Edit post') }}</a>
+                                        </div>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
-                    {% endif %}
+                        <hr>
+                    {% endfor %}
+                    <h4 class="p-t-10">{{ _('Leave a comment') }}</h4>
+                    <div class="m-b-20">
+                        <textarea class="form-control m-b-10" rows="3"></textarea>
+                        <button class="btn btn-primary"
+                                onclick="comment($(this))">{{ _('Submit') }}</button>
+                    </div>
                 </div>
-                <!-- sidebar end -->
-
             </div>
+
+            <!-- left end -->
+
+            <!-- sidebar start -->
+            <div class="col-md-4">
+                <div class="m-b-20">
+                    <h3>{{ _('Tags') }}</h3>
+                    <a href="/blog/index" class="btn btn-primary">#{{ _('All') }}</a>
+                    {% for t in tags %}
+                        <a href="/blog/index?t={{ t._id }}"
+                           class="btn btn-primary">#{{ _(t.name) }}</a>
+                    {% endfor %}
+                </div>
+                {% if current_user.is_admin %}
+                    <div class="panel panel-default">
+                        <div class="panel-heading"><h3 class="panel-title">{{ _('Admin') }}</h3></div>
+                        <div class="panel-body">
+                            <a href="/blog/post/change/{{ post._id }}">{{ _('Edit post') }}</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            <!-- sidebar end -->
+
         </div>
     </div>
 {% endblock %}
@@ -178,7 +173,7 @@
             }, function (result) {
                 if (result.success) {
                     showSuccess(result.message)
-                    location.hash = "#h3-comments";
+                    location.hash = "#div-comments";
                     location.reload();
                 } else {
                     showError(result.message)
@@ -209,7 +204,7 @@
 
             $.post("/blog/reply/{{ post._id }}/" + btn.attr("cid"), {
                 "r": Math.random(),
-                "content": btn.prev("input").val(),
+                "content": btn.parent().prev("input").val(),
                 "rid": btn.attr("rid")
             }, function (result) {
                 if (result.success) {

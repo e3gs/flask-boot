@@ -17,11 +17,11 @@ from flask import Blueprint, request, render_template, abort, jsonify, current_a
 from flask_babel import gettext as _
 from flask_login import current_user, login_required
 
-from app.decorators import user_not_rejected, user_not_evil
 from app.jobs import post_view_times_counter
 from app.models import Post, Tag, User
 from app.mongosupport import Pagination, populate_model
 from app.tools import send_support_email
+from app.tools.decorators import user_not_rejected, user_not_evil
 
 blog = Blueprint('blog', __name__)
 
@@ -192,6 +192,6 @@ def reply(post_id, comment_id):
     cmt.replys.append(reply)
     post.save()
 
-    send_support_email('reply()', post, content)
+    send_support_email('reply()', u'New reply %s on post %s.' % (content, post._id))
 
     return jsonify(success=True, message=_('Save reply successfully.'))

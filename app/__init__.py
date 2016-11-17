@@ -21,12 +21,12 @@ from flask_login import LoginManager, current_user
 from flask_mobility import Mobility
 from flask_principal import Principal, identity_loaded
 
-from app import views, helpers
-from app.converters import ListConverter, BSONObjectIdConverter
+from app import views
 from app.extensions import mail, cache, mdb
 from app.jobs import init_schedule
 from app.models import User
-from app.tools import SSLSMTPHandler
+from app.tools import SSLSMTPHandler, helpers
+from app.tools.converters import ListConverter, BSONObjectIdConverter
 
 DEFAULT_APP_NAME = 'app'
 
@@ -196,7 +196,8 @@ def configure_logging(app):
     mail_handler.setLevel(logging.ERROR)
     app.logger.addHandler(mail_handler)
 
-    formatter = logging.Formatter('%(asctime)s %(process)d-%(thread)d %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+    formatter = logging.Formatter(
+        '%(asctime)s %(process)d-%(thread)d %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
 
     debug_log = os.path.join(app.root_path, app.config['DEBUG_LOG'])
     debug_file_handler = RotatingFileHandler(debug_log, maxBytes=100000, backupCount=10)

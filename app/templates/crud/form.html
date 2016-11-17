@@ -313,31 +313,29 @@
     </style>
 {% endblock %}
 
-{% block main %}
-    <div id="main">
-        <div class="container">
-            <div class="row">
-                <!-- left start -->
-                <div class="left col-md-3">
-                    <div class="well">
-                        <h4>{{ '修改' if change else '新建' }}{{ model.__name__ }}</h4>
-                        <p>此页面用于直接更新数据库中的数据对象，随意更新可能会影响到相关业务逻辑。</p>
-                        <a class="btn btn-default btn-sm" onclick="save($(this));">保存</a>
-                        <a class="btn btn-gray btn-sm" href="/crud/index/{{ model.__name__ }}">取消</a>
-                    </div>
+{% block main_inner %}
+    <div class="container">
+        <div class="row">
+            <!-- left start -->
+            <div class="left col-md-3">
+                <div class="well">
+                    <h4>{{ '修改' if change else '新建' }}{{ model.__name__ }}</h4>
+                    <p>此页面用于直接更新数据库中的数据对象，随意更新可能会影响到相关业务逻辑。</p>
+                    <a class="btn btn-primary btn-sm" onclick="save($(this));">保存</a>
+                    <a class="btn btn-default btn-sm" href="/crud/index/{{ model.__name__ }}">取消</a>
                 </div>
-                <!-- left end -->
-
-                <!-- right start -->
-                <div class="right col-md-9">
-                    <div id="editor">
-                        <div id="doc">
-                            {{ render('Root', model.structure, record, True) }}
-                        </div>
-                    </div>
-                </div>
-                <!-- right end -->
             </div>
+            <!-- left end -->
+
+            <!-- right start -->
+            <div class="right col-md-9">
+                <div id="editor">
+                    <div id="doc">
+                        {{ render('Root', model.structure, record, True) }}
+                    </div>
+                </div>
+            </div>
+            <!-- right end -->
         </div>
     </div>
 {% endblock %}
@@ -484,7 +482,7 @@
 
 {% block script %}
     <script type="text/javascript" src="{{ base_url() }}/js/moment.min.js"></script>
-	<script type="text/javascript" src="{{ base_url() }}/js/Sortable.min.js"></script>
+    <script type="text/javascript" src="{{ base_url() }}/js/Sortable.min.js"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             // idesc

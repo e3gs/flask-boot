@@ -31,17 +31,16 @@ def index():
     """
     return render_template('public/index.html')
 
-
-@public.route('/contact')
-def contact():
-    """
-    Index page.
-    """
-    return render_template('public/contact.html')
-
-
 @public.route('/blank')
 def blank():
+    """
+    Blank page.
+    """
+    return render_template('public/blank.html')
+
+
+@public.route('/styleguide')
+def styleguide():
     """
     Blank page.
     """

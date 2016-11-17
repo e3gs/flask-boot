@@ -49,8 +49,10 @@ def timesince(dt, default=None):
             return gettext("%(period)s ago", period=trans)
 
     return default
+
+
 def date(dt):
     """
-    在页面上显示日期
+    在页面上显示日期.
     """
     return dt.strftime('%Y/%m/%d')

@@ -14,8 +14,8 @@ from datetime import datetime
 from flask import current_app
 from flask_mail import Message
 
-from app.decorators import async
 from app.extensions import mail
+from app.tools.decorators import async
 
 
 def send_support_email(type, body, **kwargs):
