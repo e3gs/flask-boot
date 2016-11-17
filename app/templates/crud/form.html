@@ -2,7 +2,7 @@
 
 {% set change = 'change' in request.url %}
 
-{% block title %}CRUD {{ 'update' if change else 'create' }}{% endblock %}
+{% block title %}CRUD {{ 'Update' if change else 'New' }}{% endblock %}
 
 {% block style %}
     <style>
@@ -319,10 +319,10 @@
             <!-- left start -->
             <div class="left col-md-3">
                 <div class="well">
-                    <h4>{{ '修改' if change else '新建' }}{{ model.__name__ }}</h4>
-                    <p>此页面用于直接更新数据库中的数据对象，随意更新可能会影响到相关业务逻辑。</p>
-                    <a class="btn btn-primary btn-sm" onclick="save($(this));">保存</a>
-                    <a class="btn btn-default btn-sm" href="/crud/index/{{ model.__name__ }}">取消</a>
+                    <h4>{{ 'Update' if change else 'New' }} {{ model.__name__ }}</h4>
+                    <p>{{ _('Please note record will be updated/created directly into database.') }}</p>
+                    <a class="btn btn-primary btn-sm" onclick="save($(this));">{{ _('Save') }}</a>
+                    <a class="btn btn-default btn-sm" href="/crud/index/{{ model.__name__ }}">{{ _('Cancel') }}</a>
                 </div>
             </div>
             <!-- left end -->
@@ -649,10 +649,10 @@
                 return;
             }
             if (isEditing()) {
-                showError("有字段正在编辑中, 无法保存！");
+                showError("{{ _('Some fields are being editing, can not save!') }}");
                 return false;
             }
-            var con = window.confirm('确定要保存么？');
+            var con = window.confirm("{{ _('Are you sure to save this record?') }}");
             if (!con) {
                 return false;
             }

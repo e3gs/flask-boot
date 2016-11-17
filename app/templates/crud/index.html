@@ -7,7 +7,7 @@
         <div class="row">
             <!-- left start -->
             <div class="left col-md-2">
-                <h4>已注册的数据模型</h4>
+                <h4>{{ _('Registered Models') }}</h4>
                 <div class="list-group">
                     {% for m in models %}
                         <a href="/crud/index/{{ m.__name__|lower }}"
@@ -21,7 +21,7 @@
 
             <!-- right start -->
             <div class="right col-md-10">
-                <h4>查询{{ model.__name__ }}</h4>
+                <h4>{{ _('Query') }} {{ model.__name__ }}</h4>
                 <hr>
                 <form id="search-form" class="form-horizontal">
                     {% for k,v in index_dict.iteritems() %}
@@ -35,9 +35,11 @@
                     {% endfor %}
                     <div class="form-group">
                         <div class="col-sm-offset-2 col-sm-10">
-                            <a href="javascript:;" class="btn btn-primary btn-sm" onclick="query(1)">查询</a>
+                            <a href="javascript:;" class="btn btn-primary btn-sm"
+                               onclick="query(1)">{{ _('Query') }}</a>
                             &nbsp;&nbsp;
-                            <a href="/crud/new/{{ model.__name__|lower }}" class="btn btn-default btn-sm">新建</a>
+                            <a href="/crud/new/{{ model.__name__|lower }}"
+                               class="btn btn-default btn-sm">{{ _('New') }}</a>
                         </div>
                     </div>
                 </form>
@@ -47,7 +49,7 @@
                         {% for f in index_dict %}
                             <th>{{ f }}</th>
                         {% endfor %}
-                        <th>操作</th>
+                        <th>{{ _('Actions') }}</th>
                     </tr>
                     {% for r in records %}
                         <tr>
@@ -64,7 +66,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="{{ model.required_fields|length + 1 }}">没有找到相关数据。</td>
+                            <td colspan="{{ model.required_fields|length + 1 }}">{{ _('No records found.') }}</td>
                         </tr>
                     {% endfor %}
                 </table>

@@ -11,7 +11,7 @@
     {% endblock %}
     <meta name="author" content="">
 
-    <title>{% block title %}Flask-Boot{% endblock %}</title>
+    <title>{% block title %}{{ _('Flask-Boot') }}{% endblock %}</title>
 
     <link rel="shortcut icon" href="{{ base_url() }}/img/favicon.ico">
     <link href="{{ base_url() }}/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
@@ -44,7 +44,7 @@
 
                 <!-- Logo container-->
                 <div class="logo">
-                    <a href="/" class="logo"><span>Flask-Boot</span></a>
+                    <a href="/" class="logo"><span>{{ _('Flask-Boot') }}</span></a>
                 </div>
                 <!-- End Logo container-->
 
@@ -53,7 +53,7 @@
                     <ul class="nav navbar-nav navbar-right pull-right">
                         <li>
                             <form role="search" class="navbar-left app-search pull-left hidden-xs">
-                                <input type="text" placeholder="Search..." class="form-control">
+                                <input type="text" placeholder="{{ _('Search...') }}" class="form-control">
                                 <a href=""><i class="fa fa-search"></i></a>
                             </form>
                         </li>
@@ -61,19 +61,18 @@
                         {% if current_user.is_authenticated %}
                             <li class="dropdown hidden-xs">
                                 <a href="javascript:;" class="dropdown-toggle" data-toggle="dropdown">
-                                    <i class="fa fa-bell"></i> <span
-                                        class="badge badge-xs badge-pink">3</span>
+                                    <i class="fa fa-bell"></i> <span class="badge badge-xs badge-pink">3</span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-lg">
-                                    <li class="text-center notifi-title">Notification</li>
+                                    <li class="text-center notifi-title">{{ _('Notifications') }}</li>
                                     <li class="list-group nicescroll notification-list">
                                         <a href="javascript:coming();" class="list-group-item">
-                                            No unread notifications.
+                                            {{ _('No unread notifications.') }}
                                         </a>
                                     </li>
                                     <li>
                                         <a href="javascript:void(0);" class=" text-right">
-                                            <small><b>All notifications</b></small>
+                                            <small><b>{{ _('All Notifications') }}</b></small>
                                         </a>
                                     </li>
                                 </ul>
@@ -85,14 +84,15 @@
                                          class="img-circle">
                                 </a>
                                 <ul class="dropdown-menu">
-                                    <li><a href="javascript:coming();"><i class="ti-user m-r-5"></i> Profile</a></li>
+                                    <li><a href="javascript:coming();"><i class="ti-user m-r-5"></i> {{ _('Profile') }}
+                                    </a></li>
                                     <li><a href="{{ url_for('public.logout') }}"><i class="ti-power-off m-r-5"></i>
-                                        Logout</a></li>
+                                        {{ _('Logout') }}</a></li>
                                 </ul>
                             </li>
                         {% else %}
                             <li class="{{ 'active' if request.endpoint and request.endpoint.startswith(('public.login', 'public.signup')) }}">
-                                <a href="{{ url_for('public.login') }}">Login</a>
+                                <a href="{{ url_for('public.login') }}">{{ _('Login') }}</a>
                             </li>
                         {% endif %}
                     </ul>
@@ -121,16 +121,17 @@
                     <!-- Navigation Menu-->
                     <ul class="navigation-menu">
                         <li class="{{ 'active' if request.endpoint and request.endpoint == 'public.index' }}">
-                            <a href="/"><i class="fa fa-home"></i>Index</a>
+                            <a href="/"><i class="fa fa-home"></i>{{ _('Index') }}</a>
                         </li>
                         <li class="{{ 'active' if request.endpoint and request.endpoint.startswith('blog') }}">
-                            <a href="{{ url_for('blog.index') }}"><i class="fa fa-book"></i>Blogs</a>
+                            <a href="{{ url_for('blog.index') }}"><i class="fa fa-book"></i>{{ _('Blog') }}</a>
                         </li>
                         <li class="has-submenu {{ 'active' if request.endpoint and request.endpoint.startswith(('public.blank', 'public.styleguide')) }}">
-                            <a href="#"><i class="fa fa-info-circle"></i>Pages <span class="caret"></span></a>
+                            <a href="#"><i class="fa fa-info-circle"></i>{{ _('Pages') }} <span
+                                    class="caret"></span></a>
                             <ul class="submenu">
-                                <li><a href="{{ url_for('public.blank') }}">Blank Page</a></li>
-                                <li><a href="{{ url_for('public.styleguide') }}">Style Guide</a></li>
+                                <li><a href="{{ url_for('public.blank') }}">{{ _('Blank Page') }}</a></li>
+                                <li><a href="{{ url_for('public.styleguide') }}">{{ _('Style Guide') }}</a></li>
                                 <li><a href="{{ url_for('crud.index') }}">CRUD</a></li>
                             </ul>
                         </li>
@@ -150,7 +151,8 @@
             <div class="container">
                 <div class="row">
                     <div class="col-sm-12">
-                        <h4 class="page-title">Blank</h4>
+                        <h1>{{ _('Flask-Boot') }}</h1>
+                        <p>{{ _('Superfast project prototyping!') }}</p>
                     </div>
                 </div>
             </div> <!-- end container -->
@@ -165,7 +167,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-xs-12">
-                    2016 © Flask-Boot
+                    2016 © {{ _('Flask-Boot') }}
                 </div>
             </div>
         </div>
