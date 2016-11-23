@@ -654,6 +654,8 @@ class Model(dict):
     def _create_indexes(cls, collection):
         """
         创建索引.
+        对于复杂路径, 比如一个数组下的结构, 我们预定义好的路径是使用$标识数组.
+        比如{images:[{'url':unicode}]}, images.$.url是正确的路径, 需要将其转化为images.url来创建mongodb的索引.
         """
         # print "Try to create index for %s" % cls.__name__
         for index in deepcopy(cls.indexes):
@@ -662,9 +664,7 @@ class Model(dict):
                 unique = index.pop('unique')
 
             given_fields = index.pop("fields", list())
-            if isinstance(given_fields, tuple):
-                fields = [given_fields]
-            elif isinstance(given_fields, basestring):
+            if isinstance(given_fields, basestring):
                 fields = [(given_fields, pymongo.ASCENDING)]
             else:
                 fields = []
@@ -672,7 +672,9 @@ class Model(dict):
                     if isinstance(field, basestring):
                         field = (field, pymongo.ASCENDING)
                     fields.append(field)
+
             # print 'Creating index for {}'.format(str(given_fields))
+            fields = [(f[0].replace('.$', ''), f[1]) for f in fields]
             collection.create_index(fields, unique=unique, **index)
 
     @classmethod

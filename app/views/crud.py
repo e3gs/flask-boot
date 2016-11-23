@@ -16,7 +16,7 @@ from flask import Blueprint, render_template, abort, current_app, request, jsoni
 from pymongo.errors import DuplicateKeyError
 
 from app.extensions import mdb
-from app.mongosupport import Pagination, populate_model, MongoSupportError
+from app.mongosupport import Pagination, populate_model, MongoSupportError, convert_from_string
 from app.permissions import admin_permission
 
 crud = Blueprint('crud', __name__)
@@ -54,19 +54,32 @@ def index(model_name=None):
                 else:
                     index_dict[val] = model._valid_paths[val]
 
-    # 根据条件进行查询
-    # TODO: 排序
-    page = int(request.args.get('_p', 1))
+    # 查询条件
+    ''' 20161123/Samuel/暂时不使用populate_model来生成查询条件g
     # 调用populate_model将查询条件转化为数据对象, 会自动转换查询条件的数据类型
     search_record = populate_model(request.args, model, False)
     # 将数据对象中非空的值提取出来, 构造成一个mongoDB查询的条件
     condition = {f: v for f, v in search_record.iteritems() if v}
-    # 用于计算总页数
+    '''
+    condition = {}
+    for k, t in index_dict.iteritems():
+        v = request.args.get(k, None)
+        if v:
+            cv = convert_from_string(v, t)
+            condition[k.replace('.$', '')] = cv
+
+    # 翻页支持
+    page = int(request.args.get('_p', 1))
     count = model.count(condition)
-    current_app.logger.debug('There are %s %ss for condition %s' % (count, model_name, condition))
     start = (page - 1) * PAGE_COUNT
+
     # 返回结果只显示索引中的字段
-    projection = dict.fromkeys(index_dict.keys(), True)
+    projection = {k.replace('.$', ''): True for k in index_dict}
+
+    current_app.logger.debug(
+        'There are %s %ss for condition %s, with projection %s' % (count, model_name, condition, projection))
+
+    # TODO: 排序
     records = model.find(condition, projection, start, PAGE_COUNT)
     pagination = Pagination(page, PAGE_COUNT, count)
 
@@ -74,7 +87,6 @@ def index(model_name=None):
     return render_template('/crud/index.html',
                            models=registered_models,
                            model=model,
-                           search_record=search_record,
                            index_dict=index_dict,
                            records=records,
                            pagination=pagination)
@@ -130,6 +142,7 @@ def save(model_name, record_id=None):
 
 
 @crud.route('/delete/<string:model_name>/<ObjectId:record_id>', methods=('GET', 'POST'))
+@admin_permission.require(403)
 def delete(model_name, record_id):
     """
     Delete record.

@@ -9,5 +9,5 @@
     :date: 16/6/11
 """
 
-from flask_mongosupport import MongoSupport, Pagination, populate_model, type_converters
+from flask_mongosupport import MongoSupport, Pagination, populate_model, type_converters, convert_from_string
 from mongosupport import Model, IN, connect, MongoSupportError, DataError, StructureError, ConnectionError

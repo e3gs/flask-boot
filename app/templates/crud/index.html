@@ -28,8 +28,8 @@
                         <div class="form-group">
                             <label class="col-sm-2 control-label">{{ k }}</label>
                             <div class="col-sm-10">
-                                <input type="text" class="form-control" name="{{ model.__name__|lower }}.{{ k }}"
-                                       {% if search_record[k] %}value="{{ search_record[k] }}"{% endif %}>
+                                <input type="text" class="form-control" name="{{ k }}"
+                                       {% if request.args.get(k, None) %}value="{{ request.args.get(k) }}"{% endif %}>
                             </div>
                         </div>
                     {% endfor %}
@@ -54,7 +54,7 @@
                     {% for r in records %}
                         <tr>
                             {% for f in index_dict %}
-                                <td>{{ r[f] }}</td>
+                                <td>{% if '.' in f %}{{ r[f.split('.')[0]] }}{% else %}{{ r[f] }}{% endif %}</td>
                             {% endfor %}
                             <td>
                                 <a href="/crud/change/{{ model.__name__|lower }}/{{ r._id|string }}"><i

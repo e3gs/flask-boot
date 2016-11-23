@@ -11,11 +11,13 @@
 
 from flask_cache import Cache
 from flask_mail import Mail
+from flask_uploads import UploadSet, IMAGES
 
 from app.mongosupport import MongoSupport
 
-__all__ = ['mail', 'cache', 'mdb']
+__all__ = ['mail', 'cache', 'mdb', 'uploads']
 
 mail = Mail()
 cache = Cache()
 mdb = MongoSupport()
+uploads = UploadSet('uploads', IMAGES)

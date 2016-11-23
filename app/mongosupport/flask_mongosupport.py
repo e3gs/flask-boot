@@ -314,9 +314,9 @@ def populate_model(multidict, model_cls, set_default=True):
             try:
                 if isinstance(value, list):
                     t = valid_paths[path + '.$']
-                    converted_value = [_convert_from_string(v, t) for v in value if v]
+                    converted_value = [convert_from_string(v, t) for v in value if v]
                 else:
-                    converted_value = _convert_from_string(value, t)
+                    converted_value = convert_from_string(value, t)
             except ValueError, e:
                 raise ValueError("%s: can not convert %s to %s" % (key, value, t))
         else:
@@ -337,7 +337,7 @@ class DefaultTypeConverter(object):
     用于将表单的字符串转化为对应类型的值.
     """
 
-    def convert_from_string(self, string_value, type):
+    def _convert_from_string(self, string_value, type):
         try:
             return type(string_value)
         except ValueError:
@@ -349,7 +349,7 @@ class BoolConverter(DefaultTypeConverter):
     unicode -> bool
     """
 
-    def convert_from_string(self, string_value, type):
+    def _convert_from_string(self, string_value, type):
         return string_value.strip().lower() in ("yes", "true")
 
 
@@ -358,7 +358,7 @@ class DatetimeConverter(DefaultTypeConverter):
     unicode -> datetime
     """
 
-    def convert_from_string(self, string_value, type):
+    def _convert_from_string(self, string_value, type):
         for fmt in DATETIME_FORMATS:
             try:
                 return datetime.strptime(string_value, fmt)
@@ -370,11 +370,11 @@ class DatetimeConverter(DefaultTypeConverter):
 type_converters = {
     bool: BoolConverter(),
     datetime: DatetimeConverter(),
-    None: DefaultTypeConverter()
+    None: DefaultTypeConverter(),  # Default converter
 }
 
 
-def _convert_from_string(string_value, t):
+def convert_from_string(string_value, t):
     if isinstance(string_value, t):
         return string_value
 
@@ -382,4 +382,4 @@ def _convert_from_string(string_value, t):
         converter = type_converters[t]
     else:
         converter = type_converters[None]
-    return converter.convert_from_string(string_value, t)
+    return converter._convert_from_string(string_value, t)

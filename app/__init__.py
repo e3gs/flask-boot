@@ -20,10 +20,11 @@ from flask_babel import Babel, gettext as _
 from flask_login import LoginManager, current_user
 from flask_mobility import Mobility
 from flask_principal import Principal, identity_loaded
+from flask_uploads import patch_request_class, UploadConfiguration
 from werkzeug.urls import url_quote
 
 from app import views
-from app.extensions import mail, cache, mdb
+from app.extensions import mail, cache, mdb, uploads
 from app.jobs import init_schedule
 from app.models import User
 from app.tools import SSLSMTPHandler, helpers
@@ -66,6 +67,7 @@ def create_app(blueprints=None):
     configure_context_processors(app)
     configure_i18n(app)
     configure_schedulers(app)
+    configure_uploads(app)
 
     # Register blueprints
     configure_blueprints(app, blueprints)
@@ -103,6 +105,19 @@ def configure_identity(app):
         # Add the UserNeed to the identity
         if hasattr(current_user, 'provides'):
             identity.provides.update(current_user.provides)
+
+
+def configure_uploads(app):
+    """
+    文件上传支持.
+    我们将图片直接保存在static目录之下, 因此在生产环境中可以直接由nginx提供服务.
+    注意我们没有调用flask_uploads的configure_uploads(), 这个方法负责为每个uploadset生成UploadConfiguration, 并且注册一个blueprint用来生成上传后的url.
+    所以我们直接初始化UploadConfiguration, 注意在上传完文件后要使用url_for('static', filename=[])来生成url.
+    """
+    # 设置上传目标路径, 无需通过配置文件设置一个绝对路径
+    uploads._config = UploadConfiguration(os.path.join(app.root_path, 'static', 'uploads'))
+    # 限制上传文件大小
+    patch_request_class(app, 10 * 1024 * 1024)
 
 
 def configure_i18n(app):
@@ -166,31 +181,31 @@ def configure_errorhandlers(app):
     def server_error(error):
         if request.is_xhr:
             return jsonify(success=False, message=_('Bad request!'))
-        return render_template('errors/400.html', error=error)
+        return render_template('errors/400.html', error=error), 400
 
     @app.errorhandler(401)
     def unauthorized(error):
         if request.is_xhr:
-            return jsonify(success=False, message=_('Login required!'), code=1)
-        return redirect(url_for('public.login', next=request.path))
+            return jsonify(success=False, message=_('Login required!'))
+        return redirect(url_for('public.login', next=request.path)), 401
 
     @app.errorhandler(403)
     def forbidden(error):
         if request.is_xhr:
             return jsonify(success=False, message=_('Sorry, Not allowed or forbidden!'))
-        return render_template('errors/403.html', error=error)
+        return render_template('errors/403.html', error=error), 403
 
     @app.errorhandler(404)
     def page_not_found(error):
         if request.is_xhr:
             return jsonify(success=False, message=_('Sorry, page not found!'))
-        return render_template('errors/404.html', error=error)
+        return render_template('errors/404.html', error=error), 404
 
     @app.errorhandler(500)
     def server_error(error):
         if request.is_xhr:
             return jsonify(success=False, message=_('Sorry, an error has occurred!'))
-        return render_template('errors/500.html', error=error)
+        return render_template('errors/500.html', error=error), 500
 
 
 def configure_blueprints(app, blueprints):

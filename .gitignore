@@ -15,3 +15,6 @@ app/scripts/*.json
 
 # Wsgi
 wsgi.pid
+
+# Uploads
+app/static/uploads/
