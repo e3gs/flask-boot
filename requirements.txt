@@ -15,4 +15,4 @@ schedule
 requests
 lxml
 # mac: xcode-select --install
-# centos: yum install python-lxml
+# centos: yum install python-lxml libxml2-devel libxslt-devel

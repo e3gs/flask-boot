@@ -187,7 +187,7 @@ def configure_errorhandlers(app):
     def unauthorized(error):
         if request.is_xhr:
             return jsonify(success=False, message=_('Login required!'))
-        return redirect(url_for('public.login', next=request.path)), 401
+        return redirect(url_for('public.login', next=request.path))
 
     @app.errorhandler(403)
     def forbidden(error):

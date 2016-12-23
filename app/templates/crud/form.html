@@ -554,7 +554,8 @@
                     $(n).children("span").click(function () {
                         var hidden = $(this).parent(".ivalue").next(":hidden");
                         if ($(this).is(".active")) {
-                            return;
+                            $(this).removeClass("active");
+                            hidden.val("");
                         } else {
                             $(this).siblings(".active").removeClass("active");
                             $(this).addClass("active");
