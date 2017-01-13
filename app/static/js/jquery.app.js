@@ -34,7 +34,7 @@
                 align: "right", // ('left', 'right', or 'center')
                 width: 500, // (integer, or 'auto')
                 delay: 5000, // Time while the message will be displayed. It's not equivalent to the *demo* timeOut!
-                allow_dismiss: false, // If true then will display a cross to close the popup.
+                allow_dismiss: true, // If true then will display a cross to close the popup.
                 stackup_spacing: 10 // spacing between consecutively stacked growls.
             });
         }
@@ -51,7 +51,7 @@
             toast(msg, "success");
         };
 
-        window.coming = function (msg) {
+        window.coming = function () {
             showInfo("Coming soon!");
         };
     }

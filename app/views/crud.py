@@ -125,7 +125,7 @@ def save(model_name, record_id=None):
     model = next((m for m in registered_models if m.__name__.lower() == model_name.lower()), None)
 
     try:
-        record = populate_model(request.form, model, False);
+        record = populate_model(request.form, model, False)
         if record_id:
             record._id = record_id
             record.save()

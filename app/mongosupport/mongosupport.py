@@ -364,7 +364,7 @@ class Model(dict):
     与mongoengine不同, mongoengine把嵌套的数据结构解释为另一个数据对象, 我们只是将其视为整个数据模型的一部分,
     必填和验证器的逻辑可以勉强实现一致, 但是设置默认值的逻辑则不完全相同,
     mongoengine总是可以在生成这个子数据对象的时候初始化默认值, 而mongosupport作为一个整体, 初始化的机会只有一次,
-    后续想要添加子数据结构的时候, 则没有生成默认值的机制了, 除非使用自己定义的dict（牺牲代码的简洁度）或者是重载__setattr__方法
+    后续想要添加子数据结构的时候, 则没有生成默认值的机制了, 除非使用自己定义的dict（牺牲代码的简洁度）或者是重载__setattr__方法.
 
     '''
 
@@ -1135,8 +1135,22 @@ class DotDictProxy(MutableMapping, object):
     def __str__(self):
         return "DotDictProxy(%s)" % self._obj_.__str__()
 
-    __setitem__ = __setattr__
-    __getitem__ = __getattr__
+    def __getitem__(self, key):
+        return self._obj_[key]
+
+    def __setitem__(self, key, value):
+        self._obj_[key] = value
+
+    def __eq__(self, other):
+        if not isinstance(other, DotDictProxy):
+            return NotImplemented
+        return self._obj_ == other._obj_
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def raw(self):
+        return self._obj_
 
 
 class DotListProxy(MutableSequence, object):
@@ -1175,6 +1189,17 @@ class DotListProxy(MutableSequence, object):
 
     def __str__(self):
         return "DotListProxy(%s)" % self._obj_.__str__()
+
+    def __eq__(self, other):
+        if not isinstance(other, DotListProxy):
+            return NotImplemented
+        return self._obj_ == other._obj_
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def raw(self):
+        return self._obj_
 
 
 def proxywrapper(value, struct):
