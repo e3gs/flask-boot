@@ -40,17 +40,17 @@ class Post(Model):
         'pics': [unicode],
         'title': unicode,
         'body': unicode,
-        'tids': [ObjectId],  # tag ids
+        'tids': [ObjectId],  # 相关标签
         'createTime': datetime,
         'viewTimes': int,
         'comments': [{
             'id': int,
-            'uid': ObjectId,
+            'uid': ObjectId,  # 发表评论人
             'content': unicode,
             'time': datetime,
             'replys': [{
-                'uid': ObjectId,
-                'rid': ObjectId,
+                'uid': ObjectId,  # 发表回复的人
+                'rid': ObjectId,  # 接收回复的人
                 'content': unicode,
                 'time': datetime
             }]

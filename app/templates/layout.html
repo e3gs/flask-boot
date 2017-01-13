@@ -84,6 +84,7 @@
                                          class="img-circle">
                                 </a>
                                 <ul class="dropdown-menu">
+                                    <li class="dropdown-header">{{ _('Welcome, ') }}{{ current_user.name }}</li>
                                     <li><a href="javascript:coming();"><i class="ti-user m-r-5"></i> {{ _('Profile') }}
                                     </a></li>
                                     <li><a href="{{ url_for('public.logout') }}"><i class="ti-power-off m-r-5"></i>

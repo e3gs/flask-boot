@@ -322,7 +322,11 @@
                     <h4>{{ 'Update' if change else 'New' }} {{ model.__name__ }}</h4>
                     <p>{{ _('Please note record will be updated/created directly into database.') }}</p>
                     <a class="btn btn-primary btn-sm" onclick="save($(this));">{{ _('Save') }}</a>
-                    <a class="btn btn-default btn-sm" href="/crud/index/{{ model.__name__ }}">{{ _('Cancel') }}</a>
+                    <a class="btn btn-success btn-sm" onclick="save($(this), true);">{{ _('Copy') }}</a>
+                    <a class="btn btn-warning btn-sm" href="/crud/json/{{ model.__name__|lower }}/{{ record._id }}"
+                       target="_blank">{{ _('JSON') }}</a>
+                    <a class="btn btn-default btn-sm"
+                       href="/crud/index/{{ model.__name__|lower }}">{{ _('Cancel') }}</a>
                 </div>
             </div>
             <!-- left end -->
@@ -645,7 +649,8 @@
             return msg;
         }
 
-        function save(btn) {
+        function save(btn, copy) {
+            copy = copy || false;
             if (btn.is(".doing")) {
                 return;
             }
@@ -653,7 +658,8 @@
                 showError("{{ _('Some fields are being editing, can not save!') }}");
                 return false;
             }
-            var con = window.confirm("{{ _('Are you sure to save this record?') }}");
+            var msg = copy ? "{{ _('Are you sure to copy this record?') }}" : "{{ _('Are you sure to save this record?') }}";
+            var con = window.confirm(msg);
             if (!con) {
                 return false;
             }
@@ -670,13 +676,16 @@
             }
 
             {% if change %}
-                var url = "/crud/save/{{ model.__name__|lower }}/{{ record._id|string }}";
+                var url = copy ? "/crud/create/{{ model.__name__|lower }}" : "/crud/save/{{ model.__name__|lower }}/{{ record._id|string }}";
             {% else %}
                 var url = "/crud/create/{{ model.__name__|lower }}";
             {% endif %}
             $.post(url, param, function (result) {
                 if (result.success) {
                     showSuccess(result.message);
+                    if (copy) {
+                        location.href = "/crud/change/{{ model.__name__|lower }}/" + result.rid;
+                    }
                 } else {
                     showError(result.message);
                 }

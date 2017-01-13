@@ -12,7 +12,7 @@
 from collections import OrderedDict
 
 from bson.objectid import ObjectId
-from flask import Blueprint, render_template, abort, current_app, request, jsonify
+from flask import Blueprint, render_template, abort, current_app, request, jsonify, make_response
 from pymongo.errors import DuplicateKeyError
 
 from app.extensions import mdb
@@ -114,6 +114,24 @@ def form(model_name, record_id=None):
                            record=record)
 
 
+@crud.route('/json/<string:model_name>/<ObjectId:record_id>')
+@admin_permission.require(403)
+def json(model_name, record_id):
+    """
+    Output a json string for specified record.
+    """
+    registered_models = mdb.registered_models
+    model = next((m for m in registered_models if m.__name__.lower() == model_name.lower()), None)
+
+    record = model.find_one({'_id': record_id})
+    if not record:
+        abort(404)
+
+    r = make_response(record.to_json(indent=2))
+    r.mimetype = 'application/json'
+    return r
+
+
 @crud.route('/create/<string:model_name>', methods=('POST',))
 @crud.route('/save/<string:model_name>/<ObjectId:record_id>', methods=('POST',))
 @admin_permission.require(403)
@@ -138,7 +156,7 @@ def save(model_name, record_id=None):
         current_app.logger.exception('Failed when saving %s' % model_name)
         return jsonify(success=False, message='Save failed!')
 
-    return jsonify(success=True, message='Save successfully. (%s)' % unicode(record._id))
+    return jsonify(success=True, message='Save successfully. (%s)' % unicode(record._id), rid=str(record._id))
 
 
 @crud.route('/delete/<string:model_name>/<ObjectId:record_id>', methods=('GET', 'POST'))
