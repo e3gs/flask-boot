@@ -11,6 +11,7 @@
 
 import logging
 import os
+import re
 from datetime import datetime
 from logging.handlers import SMTPHandler, RotatingFileHandler
 
@@ -18,7 +19,6 @@ from bson.objectid import ObjectId
 from flask import Flask, g, request, redirect, jsonify, url_for, render_template
 from flask_babel import Babel, gettext as _
 from flask_login import LoginManager, current_user
-from flask_mobility import Mobility
 from flask_principal import Principal, identity_loaded
 from flask_uploads import patch_request_class, UploadConfiguration
 from werkzeug.urls import url_quote
@@ -57,7 +57,6 @@ def create_app(blueprints=None):
 
     # Chain
     configure_extensions(app)
-    configure_mobility(app)
     configure_login(app)
     configure_identity(app)
     configure_logging(app)
@@ -79,10 +78,6 @@ def configure_extensions(app):
     mail.init_app(app)
     cache.init_app(app)
     mdb.init_app(app)
-
-
-def configure_mobility(app):
-    Mobility(app)
 
 
 def configure_login(app):
@@ -174,6 +169,18 @@ def configure_before_handlers(app):
     @app.before_request
     def authenticate():
         g.user = getattr(g.identity, 'user', None)
+
+    @app.before_request
+    def set_device():
+        """
+        设置浏览的设备.
+        """
+        mobile_agents = re.compile('android|fennec|iemobile|iphone|opera (?:mini|mobi)|mobile')
+        ua = request.user_agent.string.lower()
+        platform = request.user_agent.platform
+        request.MOBILE = True if mobile_agents.search(ua) else False
+        request.IPHONE = True if platform == 'iphone' else False
+        request.ANDROID = True if platform == 'android' else False
 
 
 def configure_errorhandlers(app):

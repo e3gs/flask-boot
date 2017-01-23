@@ -322,9 +322,11 @@
                     <h4>{{ 'Update' if change else 'New' }} {{ model.__name__ }}</h4>
                     <p>{{ _('Please note record will be updated/created directly into database.') }}</p>
                     <a class="btn btn-primary btn-sm" onclick="save($(this));">{{ _('Save') }}</a>
+                    {% if change %}
                     <a class="btn btn-success btn-sm" onclick="save($(this), true);">{{ _('Copy') }}</a>
                     <a class="btn btn-warning btn-sm" href="/crud/json/{{ model.__name__|lower }}/{{ record._id }}"
                        target="_blank">{{ _('JSON') }}</a>
+                    {% endif %}
                     <a class="btn btn-default btn-sm"
                        href="/crud/index/{{ model.__name__|lower }}">{{ _('Cancel') }}</a>
                 </div>
