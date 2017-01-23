@@ -2,10 +2,10 @@
 *.pyc
 
 # Logs
-app/logs/
+app/logs/*.log
 
-# Flask
-instance/
+# LocalConfig
+instance/config.py
 
 # PyCharm
 .idea/

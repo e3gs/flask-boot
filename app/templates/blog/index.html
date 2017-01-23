@@ -69,10 +69,10 @@
             <div class="col-md-4">
                 <div class="m-b-20">
                     <h3>{{ _('Tags') }}</h3>
-                    <a href="/blog/index" class="btn btn-primary">#{{ _('All') }}</a>
+                    <a href="/blog/index" class="btn btn-primary m-b-5">#{{ _('All') }}</a>
                     {% for t in tags %}
                         <a href="/blog/index?t={{ t._id }}"
-                           class="btn btn-primary">#{{ _(t.name) }}</a>
+                           class="btn btn-primary m-b-5">#{{ _(t.name) }}</a>
                     {% endfor %}
                 </div>
                 {% if current_user.is_admin %}
