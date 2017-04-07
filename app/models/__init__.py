@@ -11,3 +11,4 @@
 from user import User
 from blog import Post, Tag
 from seo import KeywordLevel, KeywordStatus, Keyword
+from config import Config

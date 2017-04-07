@@ -56,6 +56,9 @@ class SchemaOperator(object):
 
 
 class IN(SchemaOperator):
+    """
+    Defined available values of a field.
+    """
     repr = 'in'
 
     def __init__(self, *args):
@@ -71,6 +74,24 @@ class IN(SchemaOperator):
                     return True
         return False
 
+
+''' 暂时不支持, CRUD页面编辑该类型的字段时需要指定类型, 否则不知道应该将表单提交的值转化为哪种类型
+class OR(SchemaOperator):
+    """
+    Defined available types of a field.
+    """
+    repr = 'or'
+
+    def __init__(self, *args):
+        super(OR, self).__init__(*args)
+
+    def __str__(self):
+        repr = ' %s ' % self.repr
+        return '<' + repr.join([i.__name__ for i in self.operands]) + '>'
+
+    def validate(self, value):
+        return isinstance(value, tuple(self.operands))
+'''
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Constants
@@ -215,19 +236,27 @@ class ModelMetaclass(type):
                     raise StructureError(
                         "%s: %s must not have more then one type" % (_name, _struct))
                 __validate_structure(_struct[0], "%s.$" % _name)
-            # IN
+            # SchemaOperator
             elif isinstance(_struct, SchemaOperator):
-                types = set()
-                for operand in _struct:
-                    types.add(type(operand))
-                    if type(operand) not in AUTHORIZED_TYPES:
-                        raise StructureError("%s: %s in %s is not an authorized type (%s found)" % (
-                            _name, operand, _struct, type(operand).__name__))
                 if len(_struct) == 0:
                     raise StructureError("%s: %s can not be empty" % (_name, _struct))
-                if len(types) > 1:
-                    raise StructureError("%s: %s can not have more than one type" % (_name, _struct))
-                attrs['_valid_paths'][_name] = list(types)[0]
+                if isinstance(_struct, IN):
+                    types = set()
+                    for operand in _struct:
+                        types.add(type(operand))
+                        if type(operand) not in AUTHORIZED_TYPES:
+                            raise StructureError("%s: %s in %s is not an authorized type (%s found)" % (
+                                _name, operand, _struct, type(operand).__name__))
+                    if len(types) > 1:
+                        raise StructureError("%s: %s can not have more than one type" % (_name, _struct))
+                    attrs['_valid_paths'][_name] = list(types)[0]
+                else:
+                    for operand in _struct:
+                        if operand not in AUTHORIZED_TYPES:
+                            raise StructureError("%s: %s in %s is not an authorized type (%s found)" % (
+                                _name, operand, _struct, type(operand).__name__))
+                    # Use tuple to represent many available types
+                    attrs['_valid_paths'][_name] = tuple(_struct)
             else:
                 raise StructureError(
                     "%s: %s is not a supported thing" % (_name, _struct))
@@ -382,6 +411,10 @@ class Model(dict):
     # 索引定义
     indexes = []
 
+    # Enable schemaless support
+    # 允许保存没有定义的字段, 字段值的读写暂时只能通过__getitem__或者__setitem__访问, 或者在初始化整个文档对象时传入
+    use_schemaless = False
+
     # 是否使用dot notations的方式访问
     # https://docs.mongodb.com/manual/core/document/#document-dot-notation
     # <embedded document>.<field>
@@ -461,7 +494,8 @@ class Model(dict):
             # For fields in doc but not in structure
             doc_struct_diff = list(set(doc).difference(set(struct)))
             bad_fields = [d for d in doc_struct_diff]
-            if bad_fields:
+            # TODO: Simple validation for the fields in doc but not in structure
+            if bad_fields and not self.use_schemaless:
                 self._raise_exception(DataError, None,
                                       "unknown fields %s in %s" % (bad_fields, type(doc).__name__))
             for key in struct:
@@ -474,11 +508,15 @@ class Model(dict):
                                       "%s must be an instance of list not %s" % (path, type(doc).__name__))
             for obj in doc:
                 self._validate_doc(obj, struct[0], path)
-        # IN
+        # SchemaOperator
         elif isinstance(struct, SchemaOperator):
             if not struct.validate(doc):
-                self._raise_exception(DataError, path,
-                                      "%s must be an instance of %s not %s" % (path, struct, type(doc).__name__))
+                if isinstance(struct, IN):
+                    self._raise_exception(DataError, path,
+                                          "%s must be in %s not %s" % (path, struct.operands, doc))
+                else:
+                    self._raise_exception(DataError, path,
+                                          "%s must be an instance of %s not %s" % (path, struct, type(doc).__name__))
         #
         else:
             self._raise_exception(DataError, path,
@@ -583,7 +621,7 @@ class Model(dict):
                     elif isinstance(new_value, list):
                         new_value = new_value[:]
                     doc[key] = new_value
-            # IN
+            # SchemaOperator
             if isinstance(struct[key], SchemaOperator):
                 if new_path in self.default_values and key not in doc:
                     new_value = self.default_values[new_path]
@@ -850,7 +888,7 @@ class Model(dict):
 
         def _convert_dict(doc, struct):
             """
-            Recursively convert specified type
+            Recursively convert specified type.
             """
             for key in struct:
                 s = struct[key]

@@ -312,7 +312,7 @@ def populate_model(multidict, model_cls, set_default=True):
             t = valid_paths[path]
             # print "try to convert %s with value %s to type %s" % (path, value, t)
             try:
-                if isinstance(value, list):
+                if isinstance(value, list):  # Value should be instance of list
                     t = valid_paths[path + '.$']
                     converted_value = [convert_from_string(v, t) for v in value if v]
                 else:
