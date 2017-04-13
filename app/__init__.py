@@ -16,7 +16,7 @@ from datetime import datetime
 from logging.handlers import SMTPHandler, RotatingFileHandler
 
 from bson.objectid import ObjectId
-from flask import Flask, g, request, redirect, jsonify, url_for, render_template
+from flask import Flask, g, request, redirect, jsonify, url_for, render_template, session
 from flask_babel import Babel, gettext as _
 from flask_login import LoginManager, current_user
 from flask_principal import Principal, identity_loaded
@@ -120,8 +120,19 @@ def configure_i18n(app):
 
     @babel.localeselector
     def get_locale():
-        accept_languages = app.config.get('ACCEPT_LANGUAGES', ['en', 'zh'])
-        return request.accept_languages.best_match(accept_languages)
+        accept_languages = app.config.get('ACCEPT_LANGUAGES')
+        # 某个请求加了此参数, 则保存到session中, 优先使用此locale
+        l = request.args.get('locale', None)
+        if l in accept_languages:
+            session['locale'] = l
+        # 从Session中读取locale
+        sl = session.get('locale', None)
+        if not sl:
+            # 自动设置
+            sl = request.accept_languages.best_match(accept_languages)
+            session['locale'] = sl
+
+        return sl
 
 
 def configure_schedulers(app):

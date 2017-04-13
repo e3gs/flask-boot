@@ -31,6 +31,7 @@ def index():
     """
     return render_template('public/index.html')
 
+
 @public.route('/blank')
 def blank():
     """
