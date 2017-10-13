@@ -16,7 +16,7 @@ from datetime import datetime
 from logging.handlers import SMTPHandler, RotatingFileHandler
 
 from bson.objectid import ObjectId
-from flask import Flask, g, request, redirect, jsonify, url_for, render_template, session
+from flask import Flask, g, request, redirect, jsonify, url_for, render_template, session, has_request_context
 from flask_babel import Babel, gettext as _
 from flask_login import LoginManager, current_user
 from flask_principal import Principal, identity_loaded
@@ -27,6 +27,7 @@ from app import views
 from app.extensions import mail, cache, mdb, uploads
 from app.jobs import init_schedule
 from app.models import User
+from app.mongosupport import MongoSupportJSONEncoder
 from app.tools import SSLSMTPHandler, helpers
 from app.tools.converters import ListConverter, BSONObjectIdConverter
 
@@ -46,6 +47,9 @@ def create_app(blueprints=None):
         blueprints = DEFAULT_BLUEPRINTS
 
     app = Flask(DEFAULT_APP_NAME, instance_relative_config=True)
+
+    # Json Encoder
+    app.json_encoder = MongoSupportJSONEncoder
 
     # Url converter
     app.url_map.converters['list'] = ListConverter
@@ -120,19 +124,20 @@ def configure_i18n(app):
 
     @babel.localeselector
     def get_locale():
-        accept_languages = app.config.get('ACCEPT_LANGUAGES')
-        # 某个请求加了此参数, 则保存到session中, 优先使用此locale
-        l = request.args.get('locale', None)
-        if l in accept_languages:
-            session['locale'] = l
-        # 从Session中读取locale
-        sl = session.get('locale', None)
-        if not sl:
-            # 自动设置
-            sl = request.accept_languages.best_match(accept_languages)
-            session['locale'] = sl
+        if has_request_context() and request:
+            # 某个请求加了此参数, 则保存到session中, 优先使用此locale
+            l = request.args.get('locale', None)
+            if l:
+                accept_languages = app.config.get('ACCEPT_LANGUAGES')
+                if l not in accept_languages:
+                    l = request.accept_languages.best_match(accept_languages)
+                session['locale'] = l
 
-        return sl
+            # 从Session中读取locale, 没有则读取默认值
+            sl = session.get('locale', app.config.get('BABEL_DEFAULT_LOCALE'))
+            return sl
+        else:
+            return None
 
 
 def configure_schedulers(app):
@@ -232,9 +237,11 @@ def configure_blueprints(app, blueprints):
 
 
 def configure_logging(app):
+    subject = '[Error] %s encountered errors on %s' % (app.config['DOMAIN'], datetime.now().strftime('%Y/%m/%d'))
+    subject += (' [DEV]' if app.debug else '')
     mail_config = [(app.config['MAIL_SERVER'], app.config['MAIL_PORT']),
                    app.config['MAIL_DEFAULT_SENDER'], app.config['ADMINS'],
-                   '[Error] %s encountered errors on %s' % (app.config['DOMAIN'], datetime.now().strftime('%Y/%m/%d')),
+                   subject,
                    (app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])]
     if app.config['MAIL_USE_SSL']:
         mail_handler = SSLSMTPHandler(*mail_config)

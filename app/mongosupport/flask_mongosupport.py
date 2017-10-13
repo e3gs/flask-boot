@@ -297,6 +297,7 @@ def populate_model(multidict, model_cls, set_default=True):
     valid_paths = model_cls._valid_paths
     model_prefix = model_cls.__name__.lower() + '.'
     for key, value in multidict.iteritems():
+        # NOTE: Blank string skipped
         if not value:
             continue
         # Only process the keys with leading model.

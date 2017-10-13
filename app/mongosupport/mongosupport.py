@@ -98,7 +98,8 @@ class OR(SchemaOperator):
 #
 
 # 日期格式
-DATETIME_FORMATS = ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%fZ']
+DATETIME_FORMATS = ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S.%fZ', '%Y:%m:%d %H:%M:%S',
+                    '%Y-%m-%d']
 
 # 字段允许使用的类型
 # https://api.mongodb.com/python/current/api/bson/son.html
@@ -115,6 +116,20 @@ AUTHORIZED_TYPES = [
     ObjectId,
     Binary  # TODO: Support encoding & decoding
 ]
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Conversions
+#
+
+class MongoSupportJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, ObjectId):
+            return unicode(o)
+        elif isinstance(o, datetime):
+            return unicode(o.strftime(DATETIME_FORMATS[0]))
+
+        return json.JSONEncoder.default(self, o)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -746,10 +761,26 @@ class Model(dict):
     def find(cls, *args, **kwargs):
         """
         查找多个数据记录, 参数可以参考:
-        https://api.mongodb.com/python/current/api/pymongo/collection.html
+        https://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.find
         """
         collection = cls.get_collection(**kwargs)
         return ModelCursor(cls, collection, *args, **kwargs)
+
+    @classmethod
+    def find_by_ids(cls, ids, *args, **kwargs):
+        """
+        指定多个id查询, 返回结果保留ids的顺序.
+        """
+        filter = {}
+        if 'filter' in kwargs:
+            filter.update(kwargs.pop('filter'))
+        elif len(args) > 0:
+            filter.update(args.pop(0))
+        filter.update({'_id': {'$in': ids}})
+
+        records = list(cls.find(filter, *args, **kwargs))
+        records.sort(key=lambda i: ids.index(i._id))
+        return records
 
     @classmethod
     def count(cls, filter=None, **kwargs):
@@ -797,6 +828,10 @@ class Model(dict):
 
     @classmethod
     def aggregate(cls, pipeline, **kwargs):
+        """
+        聚合逻辑, 参考:
+        https://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
+        """
         collection = cls.get_collection(**kwargs)
         return collection.aggregate(pipeline, **kwargs)
 
@@ -856,17 +891,7 @@ class Model(dict):
         """
         Convert the model instance to a json string.
         """
-
-        class JSONEncoder(json.JSONEncoder):
-            def default(self, o):
-                if isinstance(o, ObjectId):
-                    return unicode(o)
-                elif isinstance(o, datetime):
-                    return unicode(o.strftime(DATETIME_FORMATS[0]))
-
-                return json.JSONEncoder.default(self, o)
-
-        return json.dumps(self, cls=JSONEncoder, **kwargs)
+        return json.dumps(self, cls=MongoSupportJSONEncoder, **kwargs)
 
     @classmethod
     def from_json(cls, doc, **kwargs):
@@ -884,7 +909,7 @@ class Model(dict):
             elif type is ObjectId:
                 return ObjectId(value)
             else:
-                return value
+                return type(value)
 
         def _convert_dict(doc, struct):
             """
@@ -901,11 +926,14 @@ class Model(dict):
                 if type(s) is type:
                     doc[key] = json_decode(old_value, s)
                 # {}
-                if isinstance(s, dict):
+                elif isinstance(s, dict):
                     _convert_dict(old_value, s)
                 # []
-                if isinstance(s, list):
+                elif isinstance(s, list):
                     _convert_list(old_value, s)
+                # IN
+                elif isinstance(s, SchemaOperator):
+                    doc[key] = json_decode(old_value, type(s.operands[0]))
 
         def _convert_list(doc, struct):
             s = struct[0]
@@ -917,11 +945,14 @@ class Model(dict):
                 if type(s) is type:
                     doc[i] = json_decode(old_value, s)
                 # {}
-                if isinstance(s, dict):
+                elif isinstance(s, dict):
                     _convert_dict(old_value, s)
                 # []
-                if isinstance(s, list):
+                elif isinstance(s, list):
                     _convert_list(old_value, s)
+                # IN
+                elif isinstance(s, SchemaOperator):
+                    doc[i] = json_decode(old_value, type(s.operands[0]))
 
         d = json.loads(doc)
         _convert_dict(d, cls.structure)

@@ -48,7 +48,7 @@ def user_not_rejected(f):
 def user_not_evil(f):
     """
     检测当前用户是否是非法用户.
-    1) 30秒内不能重复操作.
+    1) 15秒内不能重复操作.
     """
 
     @wraps(f)
@@ -57,7 +57,7 @@ def user_not_evil(f):
         rv = cache.get(key)
         if not rv:
             # 15秒
-            cache.set(key, object(), timeout=30)
+            cache.set(key, object(), timeout=15)
         else:
             abort(403)
         return f(*args, **kwargs)
