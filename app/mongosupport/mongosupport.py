@@ -16,7 +16,6 @@ from copy import deepcopy
 from datetime import datetime
 
 import pymongo
-from bson.binary import Binary
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ReadPreference, uri_parser, WriteConcern
 from pymongo.cursor import Cursor as PyMongoCursor
@@ -114,7 +113,6 @@ AUTHORIZED_TYPES = [
     # str
     datetime,
     ObjectId,
-    Binary  # TODO: Support encoding & decoding
 ]
 
 

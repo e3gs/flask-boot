@@ -608,7 +608,7 @@
                     return false;
                 }
                 var irow = $(this).closest(".irow");
-                var count = irow.siblings(".irow").size();
+                var count = irow.siblings(".irow").length;
                 var parentInav = irow.parent().closest(".irow").children(".inav");
                 parentInav.children(".idesc").html("Array [" + count + "] <i class='fa fa-caret-down'></i>");
                 irow.remove();
@@ -707,7 +707,7 @@
             if (ivalue.is(".imulti")) {
                 ivalue.find("> .ilist > .irow").each(function (i, n) {
                     var iv = $(n).find("> .inav > .ivalue");
-                    if (iv.size() == 0) {
+                    if (iv.length == 0) {
                         iv = $(n).find("> .ivalue.imulti");
                     }
                     if (ivalue.is(".dict")) {
