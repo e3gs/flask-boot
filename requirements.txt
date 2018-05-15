@@ -7,6 +7,7 @@ Flask-Mail
 Flask-Script
 Flask-Babel
 Flask-Uploads
+pytest
 pymongo
 blinker
 fabric

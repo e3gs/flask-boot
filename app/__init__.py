@@ -42,7 +42,7 @@ DEFAULT_BLUEPRINTS = (
 )
 
 
-def create_app(blueprints=None):
+def create_app(blueprints=None, pytest=False):
     if blueprints is None:
         blueprints = DEFAULT_BLUEPRINTS
 
@@ -58,6 +58,9 @@ def create_app(blueprints=None):
     # Config
     app.config.from_object('app.config')
     app.config.from_pyfile('config.py')
+    if pytest:
+        # 使用测试数据库
+        app.config['MONGODB_DATABASE'] = 'pytest'
 
     # Chain
     configure_extensions(app)

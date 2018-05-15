@@ -18,3 +18,9 @@ wsgi.pid
 
 # Uploads
 app/static/uploads/
+
+# npm
+node_modules/
+
+# pytest
+.pytest_cache
