@@ -9,7 +9,7 @@
     :date: 16/5/9
 """
 
-from flask_cache import Cache
+from flask_caching import Cache
 from flask_mail import Mail
 from flask_uploads import UploadSet, IMAGES
 

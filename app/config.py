@@ -1,5 +1,6 @@
 DOMAIN = 'flask-boot.com'
 
+ENV = 'production'
 DEBUG = False
 SECRET_KEY = 'this is a secret'
 
