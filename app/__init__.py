@@ -13,7 +13,7 @@ import logging
 import os
 import re
 from datetime import datetime
-from logging.handlers import SMTPHandler, RotatingFileHandler
+from logging.handlers import SMTPHandler, TimedRotatingFileHandler
 
 from bson.objectid import ObjectId
 from flask import Flask, g, request, redirect, jsonify, url_for, render_template, session, has_request_context
@@ -258,13 +258,13 @@ def configure_logging(app):
         '%(asctime)s %(process)d-%(thread)d %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
 
     debug_log = os.path.join(app.root_path, app.config['DEBUG_LOG'])
-    debug_file_handler = RotatingFileHandler(debug_log, maxBytes=100000, backupCount=10)
+    debug_file_handler = TimedRotatingFileHandler(debug_log, when='midnight', interval=1, backupCount=90)
     debug_file_handler.setLevel(logging.DEBUG)
     debug_file_handler.setFormatter(formatter)
     app.logger.addHandler(debug_file_handler)
 
     error_log = os.path.join(app.root_path, app.config['ERROR_LOG'])
-    error_file_handler = RotatingFileHandler(error_log, maxBytes=100000, backupCount=10)
+    error_file_handler = TimedRotatingFileHandler(error_log, when='midnight', interval=1, backupCount=90)
     error_file_handler.setLevel(logging.ERROR)
     error_file_handler.setFormatter(formatter)
     app.logger.addHandler(error_file_handler)

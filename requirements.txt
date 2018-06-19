@@ -10,7 +10,7 @@ Flask-Uploads
 pytest
 pymongo
 blinker
-fabric
+fabric<2.0
 schedule
 requests
 lxml

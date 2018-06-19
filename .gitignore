@@ -3,6 +3,7 @@
 
 # Logs
 app/logs/*.log
+app/logs/*.log.*
 
 # LocalConfig
 instance/config.py
@@ -18,6 +19,8 @@ wsgi.pid
 
 # Uploads
 app/static/uploads/
+app/static/downloads/
+app/static/exports/
 
 # npm
 node_modules/
