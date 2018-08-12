@@ -6,6 +6,7 @@ SECRET_KEY = 'this is a secret'
 
 CACHE_TYPE = "simple"
 CACHE_DEFAULT_TIMEOUT = 300
+CACHE_THRESHOLD = 10240
 
 ACCEPT_LANGUAGES = ['en', 'zh']
 
